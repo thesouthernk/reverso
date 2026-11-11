@@ -32,6 +32,7 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+!.env.example
 
 # vercel
 .vercel
@@ -39,3 +40,13 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# marketing: keep the scripts and the 3D film source, not renders, caches or local tools
+marketing/**/*.mp4
+marketing/.venv-tts/
+marketing/vo-words/
+marketing/video/
+marketing/video2/.hyperframes/
+marketing/video2/renders/
+marketing/video2/compositions/*.bak
+.playwright-mcp/

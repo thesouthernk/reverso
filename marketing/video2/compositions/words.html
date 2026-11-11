@@ -1,0 +1,118 @@
+<template>
+  <style>
+    #root { position: absolute; inset: 0; pointer-events: none; }
+    .cue { position: absolute; font-weight: 500; letter-spacing: -0.03em; line-height: 1.12; color: var(--ink); }
+    .cue .w { display: inline-block; }
+    .cue .acc { color: var(--accent); }
+    .cue.city { left: 0; right: 0; top: 930px; text-align: center; font-size: 60px; color: var(--ink); text-shadow: 0 0 18px #eef0f3, 0 0 36px #eef0f3; }
+    .cue.city .acc { color: var(--accent); }
+    .cue.side { left: 1150px; width: 640px; top: 470px; font-size: 56px; }
+    .cue.low { left: 0; right: 0; top: 880px; text-align: center; font-size: 60px; }
+    .cue.top { left: 0; right: 0; top: 70px; text-align: center; font-size: 60px; }
+  </style>
+  <div id="root" data-composition-id="words" data-width="1920" data-height="1080">
+    <p class="cue city" id="cu0"><span class="w">Maria</span> <span class="w">wants</span> <span class="w">one</span> <span class="w acc">price.</span></p>
+    <p class="cue city" id="cu1"><span class="w">One</span> <span class="w">form.</span></p>
+    <p class="cue city" id="cu2"><span class="w">11</span> <span class="w">missed</span> <span class="w">calls.</span></p>
+    <p class="cue city" id="cu3"><span class="w">4</span> <span class="w">dealers</span> <span class="w">have</span> <span class="w">her</span> <span class="w">number.</span></p>
+    <p class="cue city" id="cu4"><span class="w">Car</span> <span class="w">ads</span> <span class="w">in</span> <span class="w">every</span> <span class="w">app.</span></p>
+    <p class="cue city" id="cu5"><span class="w">Still</span> <span class="w">no</span> <span class="w acc">price.</span></p>
+    <p class="cue city" id="cu6"><span class="w">“Come</span> <span class="w">in</span> <span class="w">and</span> <span class="w">we’ll</span> <span class="w">talk.”</span></p>
+    <p class="cue top" id="cu7"><span class="w">Her</span> <span class="w">request</span> <span class="w">became</span> <span class="w">a</span> <span class="w acc">product.</span></p>
+    <p class="cue top" id="cu8"><span class="w">Sold</span> <span class="w">to</span> <span class="w">every</span> <span class="w">dealer</span> <span class="w">at</span> <span class="w">once.</span></p>
+    <p class="cue top" id="cu9"><span class="w">Then</span> <span class="w">ads</span> <span class="w">follow</span> <span class="w">her</span> <span class="w">everywhere.</span></p>
+    <p class="cue top" id="cu10"><span class="w">They</span> <span class="w">all</span> <span class="w">paid</span> <span class="w">before</span> <span class="w">she</span> <span class="w">decided.</span></p>
+    <p class="cue top" id="cu11"><span class="w">So</span> <span class="w">they</span> <span class="w">all</span> <span class="w acc">chase</span> <span class="w">her.</span></p>
+    <p class="cue low" id="cu12"><span class="w">Reverso</span> <span class="w">turns</span> <span class="w">it</span> <span class="w acc">around.</span></p>
+    <p class="cue low" id="cu13"><span class="w">Dealers</span> <span class="w">compete</span> <span class="w">for</span> <span class="w">her.</span></p>
+    <p class="cue low" id="cu14"><span class="w">Anonymous</span> <span class="w">until</span> <span class="w">she</span> <span class="w acc">picks</span> <span class="w">one.</span></p>
+    <p class="cue side" id="cu15"><span class="w">She</span> <span class="w">tells</span> <span class="w">the</span> <span class="w">agent</span> <span class="w">what</span> <span class="w">she</span> <span class="w">wants.</span></p>
+    <p class="cue side" id="cu16"><span class="w">It</span> <span class="w">asks</span> <span class="w">like</span> <span class="w">a</span> <span class="w">good</span> <span class="w">salesperson.</span></p>
+    <p class="cue side" id="cu17"><span class="w">Where.</span> <span class="w">How</span> <span class="w">she</span> <span class="w">pays.</span> <span class="w">When.</span></p>
+    <p class="cue side" id="cu18"><span class="w">Identity</span> <span class="w">verified</span> <span class="w">with</span> <span class="w acc">PayPal.</span></p>
+    <p class="cue side" id="cu19"><span class="w">Sent</span> <span class="w">with</span> <span class="w">no</span> <span class="w">name,</span> <span class="w">no</span> <span class="w">number.</span></p>
+    <p class="cue top" id="cu20"><span class="w">Sealed,</span> <span class="w">out-the-door</span> <span class="w acc">offers.</span></p>
+    <p class="cue top" id="cu21"><span class="w">Her</span> <span class="w">agent</span> <span class="w">reads</span> <span class="w">the</span> <span class="w">fine</span> <span class="w">print.</span></p>
+    <p class="cue top" id="cu22"><span class="w">This</span> <span class="w">one</span> <span class="w">looks</span> <span class="w">cheapest.</span></p>
+    <p class="cue top" id="cu23"><span class="w">Hidden</span> <span class="w">package.</span> <span class="w">Dealer</span> <span class="w">financing</span> <span class="w">only.</span></p>
+    <p class="cue top" id="cu24"><span class="w">It</span> <span class="w">drops</span> <span class="w">to</span> <span class="w acc">last.</span></p>
+    <p class="cue side" id="cu25"><span class="w">She</span> <span class="w">picks</span> <span class="w">the</span> <span class="w">best</span> <span class="w">offer.</span></p>
+    <p class="cue side" id="cu26"><span class="w">Only</span> <span class="w">that</span> <span class="w">dealer</span> <span class="w">gets</span> <span class="w">her</span> <span class="w acc">contact.</span></p>
+    <p class="cue side" id="cu27"><span class="w">She</span> <span class="w">sees</span> <span class="w">the</span> <span class="w">exact</span> <span class="w">car.</span></p>
+    <p class="cue side" id="cu28"><span class="w">Price</span> <span class="w">held</span> <span class="w">for</span> <span class="w">30</span> <span class="w">minutes.</span></p>
+    <p class="cue side" id="cu29"><span class="w">Reserve</span> <span class="w">it</span> <span class="w">with</span> <span class="w">a</span> <span class="w">refundable</span> <span class="w acc">PayPal</span> <span class="w">deposit.</span></p>
+    <p class="cue side" id="cu30"><span class="w">Or</span> <span class="w">book</span> <span class="w">a</span> <span class="w">visit.</span></p>
+    <p class="cue side" id="cu31"><span class="w">For</span> <span class="w">dealers:</span> <span class="w">no</span> <span class="w">ads,</span> <span class="w">no</span> <span class="w">cold</span> <span class="w">leads.</span></p>
+    <p class="cue side" id="cu32"><span class="w">Live</span> <span class="w">requests,</span> <span class="w">already</span> <span class="w acc">qualified.</span></p>
+    <p class="cue side" id="cu33"><span class="w">Budget.</span> <span class="w">Payment.</span> <span class="w">Timing.</span> <span class="w">Verified.</span></p>
+    <p class="cue side" id="cu34"><span class="w">Their</span> <span class="w">agent</span> <span class="w">bids</span> <span class="w">above</span> <span class="w">their</span> <span class="w">floor.</span></p>
+    <p class="cue top" id="cu35"><span class="w">They</span> <span class="w">pay</span> <span class="w">for</span> <span class="w">what</span> <span class="w acc">happened.</span></p>
+    <p class="cue top" id="cu36"><span class="w">$40</span> <span class="w">a</span> <span class="w">contact.</span></p>
+    <p class="cue top" id="cu37"><span class="w">$75</span> <span class="w">a</span> <span class="w">booked</span> <span class="w">visit.</span></p>
+    <p class="cue top" id="cu38"><span class="w">$150</span> <span class="w">a</span> <span class="w">reservation.</span></p>
+    <p class="cue top" id="cu39"><span class="w">No</span> <span class="w">answer?</span> <span class="w">Sale</span> <span class="w">falls</span> <span class="w">through?</span></p>
+    <p class="cue top" id="cu40"><span class="w acc">PayPal</span> <span class="w">sends</span> <span class="w">it</span> <span class="w">back.</span></p>
+    <p class="cue low" id="cu41"><span class="w">She</span> <span class="w">got</span> <span class="w">the</span> <span class="w">real</span> <span class="w">price.</span></p>
+    <p class="cue low" id="cu42"><span class="w">And</span> <span class="w">kept</span> <span class="w">her</span> <span class="w">privacy.</span></p>
+    <p class="cue low" id="cu43"><span class="w">They</span> <span class="w">paid</span> <span class="w">when</span> <span class="w">chosen.</span></p>
+    <p class="cue side" id="cu44"><span class="w">Maria</span> <span class="w">confirms</span> <span class="w">the</span> <span class="w">purchase.</span></p>
+    <p class="cue side" id="cu45"><span class="w">She</span> <span class="w">gets</span> <span class="w">a</span> <span class="w">$50</span> <span class="w acc">gas</span> <span class="w">card.</span></p>
+    <p class="cue side" id="cu46"><span class="w">So</span> <span class="w">we</span> <span class="w">know</span> <span class="w">the</span> <span class="w">sale</span> <span class="w acc">closed.</span></p>
+  </div>
+  <script>
+    const tl = gsap.timeline({ paused: true });
+    gsap.set(".cue .w", { opacity: 0, filter: "blur(10px)", y: 6 });
+    function cue(sel, a, b) {
+      const w = document.querySelectorAll(sel + " .w");
+      tl.to(w, { opacity: 1, filter: "blur(0px)", y: 0, duration: 0.22, ease: "power3.out", stagger: 0.07 }, a);
+      tl.to(w, { opacity: 0, filter: "blur(8px)", duration: 0.16, ease: "power2.in", stagger: 0.02 }, b - 0.2);
+    }
+    cue('#cu0', 0.6, 4.6);
+    cue('#cu1', 4.8, 6.3);
+    cue('#cu2', 6.35, 7.6);
+    cue('#cu3', 7.65, 9.5);
+    cue('#cu4', 9.55, 12.2);
+    cue('#cu5', 12.25, 14.8);
+    cue('#cu7', 17.4, 19.5);
+    cue('#cu8', 19.6, 22.9);
+    cue('#cu9', 23.0, 26.1);
+    cue('#cu10', 26.2, 28.8);
+    cue('#cu11', 28.9, 30.7);
+    cue('#cu12', 31.4, 33.8);
+    cue('#cu13', 33.9, 35.8);
+    cue('#cu14', 35.9, 38.8);
+    cue('#cu15', 39.0, 41.1);
+    cue('#cu16', 41.2, 43.6);
+    cue('#cu17', 43.7, 46.8);
+    cue('#cu18', 46.9, 49.9);
+    cue('#cu19', 50.0, 53.3);
+    cue('#cu20', 53.6, 57.2);
+    cue('#cu21', 57.3, 59.7);
+    cue('#cu22', 59.8, 61.6);
+    cue('#cu23', 61.7, 65.9);
+    cue('#cu24', 66.0, 67.8);
+    cue('#cu25', 68.1, 69.7);
+    cue('#cu26', 69.8, 72.7);
+    cue('#cu27', 72.8, 74.6);
+    cue('#cu28', 74.7, 76.8);
+    cue('#cu29', 76.9, 79.8);
+    cue('#cu30', 79.9, 82.6);
+    cue('#cu31', 83.0, 86.2);
+    cue('#cu32', 86.3, 88.9);
+    cue('#cu33', 89.0, 92.5);
+    cue('#cu34', 92.6, 96.1);
+    cue('#cu35', 96.5, 98.3);
+    cue('#cu36', 98.4, 100.4);
+    cue('#cu37', 100.5, 102.5);
+    cue('#cu38', 102.6, 104.8);
+    cue('#cu39', 104.9, 107.9);
+    cue('#cu40', 108.0, 110.4);
+    cue('#cu41', 119.6, 121.7);
+    cue('#cu42', 121.8, 123.0);
+    cue('#cu43', 123.1, 125.0);
+    cue('#cu44', 110.9, 113.4);
+    cue('#cu45', 113.5, 116.8);
+    cue('#cu46', 116.9, 119.3);
+    window.__timelines["words"] = tl;
+  </script>
+</template>
