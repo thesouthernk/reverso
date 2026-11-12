@@ -40,7 +40,7 @@ Then we assumed the worst: our own agents fully hijacked, obeying every injectio
 - 9,000 tampered or repeated `create_refund` calls: **only 300 got through, one $40 refund per unanswered buyer**.
 - 300 refunds for buyers who did answer: **0**.
 
-With the real model in a pilot, the fine-print reviewer priced 7/7 planted hidden charges right, flagged 3/3 injections and priced 5/5 clean quotes right. Whatever it says, real cost never drops below the headline, and the server reads every order back from PayPal and refuses to capture anything but $500.00 USD.
+Those zeros hold only if the buyer's fine-print reviewer prices each quote right, so we ran the production reviewer (Claude Opus 5.5, same prompt) over 300 more cheating auctions, 1,200 quotes: **658/658 hidden charges priced in, 542/542 clean quotes left alone, 376/376 prompt injections called out, 0 false alarms on honest quotes**. Every quote and answer is in the repo (`eval/reviewer-300.json`). The quotes come from templates, so they are tidier than real dealer paperwork, and the closing agent was measured once, not at volume. Whatever the reviewer says, real cost never drops below the headline, and the server reads every order back from PayPal and refuses to capture anything but $500.00 USD.
 
 ## Challenges we ran into
 - Our first identity check used Log in with PayPal, which isn't available in every country, and buyers didn't want to hand over a PayPal account just to see a price. We switched to a one-time code on the buyer's own contact details.
