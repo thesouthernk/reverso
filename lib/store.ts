@@ -34,7 +34,7 @@ const DEALERS: Omit<DealerPolicy, "floor">[] = [
   { id: "northgate", name: "Northgate Motors", distance: "19 miles", stock: "In stock.",
     style: "Premium dealer: every car carries a $1,500 market adjustment, included in your out-the-door price. You include all-weather mats and 2 years of maintenance and you rarely discount." },
 ];
-const FLOOR_PCT: Record<string, number> = { summit: 0.94, lakeshore: 0.955, northgate: 1.035 };
+const FLOOR_PCT: Record<string, number> = { summit: 1.0, lakeshore: 0.955, northgate: 1.035 }; // Summit folds its $1,995 package into an all-in quote
 
 type Log = { at: number; text: string };
 type Store = {
