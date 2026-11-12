@@ -4,17 +4,62 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AgGridReact } from "ag-grid-react";
 import { AllCommunityModule, ModuleRegistry, themeQuartz, type ColDef, type ICellRendererParams, type CellValueChangedEvent } from "ag-grid-community";
+import { AgCharts } from "ag-charts-react";
+import { AllCommunityModule as ChartsModule, ModuleRegistry as ChartsRegistry, type AgCartesianChartOptions, type AgPolarChartOptions } from "ag-charts-community";
 
 ModuleRegistry.registerModules([AllCommunityModule]);
+ChartsRegistry.registerModules([ChartsModule]);
 
 type Row = { id: string; model: string; payment: string; budget: string; when: string; buyer: string; bids: number; myPrice: number | null; rank: number | null; status: string;
-  myFloor: number | null; myRealCost: number | null; reasoning: string; note: string; toLead: number | null; aheadBy: number | null };
+  myFloor: number | null; myRealCost: number | null; bestRival: number | null; reasoning: string; note: string; toLead: number | null; aheadBy: number | null };
+type Spend = { contact: number; visit: number; reserve: number; refunded: number };
 type Inv = { key: string; model: string; trim: string; msrp: number; otd: number; floor: number };
 type Deal = { reqId: string; name: string; email: string; phone: string; car: string; price: number; stage: number; paid: number; refunded: number; visit?: string };
-type View = { dealer: string; balance: number; fees: { contact: number; visit: number; reserve: number }; rows: Row[]; inventory: Inv[]; deals: Deal[]; topups: { amount: number; refunded: number }[]; log: { at: number; text: string }[]; clientId: string };
+type View = { dealer: string; balance: number; fees: { contact: number; visit: number; reserve: number }; rows: Row[]; inventory: Inv[]; deals: Deal[]; topups: { amount: number; refunded: number }[]; log: { at: number; text: string }[]; clientId: string; spend: Spend };
 
 const usd = (n: number) => "$" + new Intl.NumberFormat("en-US").format(Math.round(n));
 const STAGES = ["New contact", "Visit booked", "Reserved", "Sold", "Refunded"];
+const FONT = { fontFamily: "var(--font-geist), system-ui, sans-serif" };
+
+/** AG Charts: where you stand on each live request, and where your money went. Both redraw as the grid changes. */
+function Charts({ rows, spend }: { rows: Row[]; spend: Spend }) {
+  const live = rows.filter((r) => ["Bidding", "Re-bidding"].includes(r.status) && r.myRealCost != null);
+  const data = (live.length ? live : rows.filter((r) => r.myRealCost != null)).slice(0, 6).reverse()
+    .map((r) => ({ id: r.id, floor: r.myFloor, mine: r.myRealCost, rival: r.bestRival }));
+  const vals = data.flatMap((d) => [d.floor, d.mine, d.rival]).filter((v): v is number => v != null);
+  const min = vals.length ? Math.floor((Math.min(...vals) - 600) / 500) * 500 : 0;
+  const money = { formatter: ({ value }: { value: number }) => usd(value) };
+  const bars: AgCartesianChartOptions = {
+    data, background: { visible: false }, title: { text: "Your position on live requests", ...FONT, fontSize: 15, fontWeight: 600, textAlign: "left" },
+    subtitle: { text: "Buyer's real cost of your offer vs the best rival, with your floor", ...FONT, fontSize: 12, color: "#6B7280", textAlign: "left" },
+    series: [
+      { type: "bar", xKey: "id", yKey: "floor", yName: "Your floor", fill: "#D7DCE5", cornerRadius: 6, label: { ...money, ...FONT, fontSize: 11, color: "#4B5563", placement: "inside-end" }, tooltip: { renderer: ({ datum }) => `Floor ${usd(datum.floor)}` } },
+      { type: "bar", xKey: "id", yKey: "mine", yName: "Your real cost", fill: "#2F6BFF", cornerRadius: 6, label: { ...money, ...FONT, fontSize: 11, color: "#fff", placement: "inside-end" } },
+      { type: "bar", xKey: "id", yKey: "rival", yName: "Best rival", fill: "#F59E0B", cornerRadius: 6, label: { ...money, ...FONT, fontSize: 11, color: "#fff", placement: "inside-end" } },
+    ],
+    axes: { x: { type: "category", position: "bottom", label: FONT }, y: { type: "number", position: "left", min, label: { ...money, ...FONT }, gridLine: { style: [{ stroke: "#EEF0F3" }] } } },
+    legend: { position: "bottom", item: { label: FONT } },
+  };
+  const parts = [
+    { kind: "Contacts", amount: spend.contact, fill: "#2F6BFF" }, { kind: "Visits", amount: spend.visit, fill: "#14B8A6" },
+    { kind: "Reservations", amount: spend.reserve, fill: "#84CC16" }, { kind: "Refunded via PayPal", amount: spend.refunded, fill: "#D7DCE5" },
+  ].filter((p) => p.amount > 0);
+  const net = spend.contact + spend.visit + spend.reserve - spend.refunded;
+  const donut: AgPolarChartOptions = {
+    data: parts, background: { visible: false }, title: { text: "Where your money went", ...FONT, fontSize: 15, fontWeight: 600, textAlign: "left" },
+    subtitle: { text: "Fees by outcome, and what PayPal sent back", ...FONT, fontSize: 12, color: "#6B7280", textAlign: "left" },
+    series: [{ type: "donut", angleKey: "amount", legendItemKey: "kind", fills: parts.map((p) => p.fill), strokeWidth: 2, innerRadiusRatio: 0.68,
+      innerLabels: [{ text: usd(net), ...FONT, fontSize: 22, fontWeight: 650 }, { text: "net spent", ...FONT, fontSize: 12, color: "#6B7280" }],
+      tooltip: { renderer: ({ datum }) => `${datum.kind}: ${usd(datum.amount)}` } }],
+    legend: { position: "bottom", item: { label: FONT } },
+  };
+  return (
+    <section className="charts" aria-label="Charts">
+      <div className="chart wide">{data.length ? <AgCharts options={bars} /> : <p className="empty">Your position appears here as soon as your agent bids.</p>}</div>
+      <div className="chart">{parts.length ? <AgCharts options={donut} /> : <p className="empty">Nothing charged yet. You pay only when a buyer picks you.</p>}</div>
+    </section>
+  );
+}
 
 const pill = (tone: (r: Row) => string) => function Pill(p: ICellRendererParams<Row>) {
   return p.value && p.data ? <span className={`pill ${tone(p.data)}`}>{p.value}</span> : null;
@@ -131,6 +176,8 @@ export default function Dealer() {
             overlayNoRowsTemplate="No requests yet. Open the buyer view and ask for a car." />
         </div>
       </div>
+
+      {view && <Charts rows={view.rows} spend={view.spend ?? { contact: 0, visit: 0, reserve: 0, refunded: 0 }} />}
 
       <section className="pipeline" aria-label="Buyers who picked your offer">
         <h2>Buyers who picked your offer</h2>

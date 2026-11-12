@@ -151,6 +151,10 @@ ol, ul { list-style: none; }
 .pill.live::before { content: ""; width: 6px; height: 6px; margin-right: 7px; border-radius: 50%; background: var(--blue); animation: pulse 1.6s ease-out infinite; }
 
 .pipeline { padding: 40px 24px 0; }
+.charts { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; padding: 24px 24px 0; }
+.chart { border: 1px solid var(--line); border-radius: 20px; box-shadow: var(--lift); padding: 12px; height: 340px; min-width: 0; background: var(--bg); }
+.chart .empty { padding: 20px; }
+@media (max-width: 860px) { .charts { grid-template-columns: 1fr; padding: 24px 16px 0; } }
 .pipeline h2, .feed h2 { font-size: 20px; font-weight: 620; letter-spacing: -0.02em; margin-bottom: 14px; }
 .lanes { display: grid; grid-template-columns: repeat(5, minmax(210px, 1fr)); gap: 12px; overflow-x: auto; padding-bottom: 4px; }
 .lane { background: var(--soft); border-radius: 20px; padding: 14px 12px 12px; display: flex; flex-direction: column; gap: 10px; min-height: 140px; }

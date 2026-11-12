@@ -38,9 +38,12 @@ const DEALERS: Omit<DealerPolicy, "floor">[] = [
 const FLOOR_PCT: Record<string, number> = { summit: 1.0, lakeshore: 0.955, northgate: 1.035 }; // Summit folds its $1,995 package into an all-in quote
 
 type Log = { at: number; text: string };
+type Spend = { contact: number; visit: number; reserve: number; refunded: number };
+const spend = (s: Store) => (s.spend ??= { contact: 0, visit: 0, reserve: 0, refunded: 0 });
 type Store = {
   seq: number; reqs: Req[]; deals: Deal[]; log: Log[];
   balance: number; topups: TopUp[];
+  spend?: Spend; // fees charged by outcome and refunded through PayPal, for the dealer's chart
   floors: Record<string, number>; // "Model|Trim" -> Bayside's out-the-door floor, edited in the dealer grid
 };
 const g = globalThis as unknown as { __reverso?: Store };
@@ -62,10 +65,10 @@ export function setFloor(key: string, floor: number) {
   const s = store(); if (!(key in s.floors) || !Number.isFinite(floor) || floor < 1000) return false;
   s.floors[key] = Math.round(floor); log(`Floor for ${key.replace("|", " ")} set to ${usd(floor)}.`); return true;
 }
-function charge(reqId: string, total: number, why: string) {
+function charge(reqId: string, total: number, why: string, kind: "contact" | "visit" | "reserve") {
   const s = store(), d = s.deals.find((x) => x.reqId === reqId); if (!d) return;
   const extra = Math.max(0, total - d.paid); if (!extra) return;
-  s.balance -= extra; d.paid += extra; log(`${why} ${usd(extra)} charged from your PayPal-funded balance.`);
+  s.balance -= extra; d.paid += extra; spend(s)[kind] += extra; log(`${why} ${usd(extra)} charged from your PayPal-funded balance.`);
 }
 /** No answer within 48 hours: the contact fee goes back through PayPal. */
 export async function refundNoAnswer(reqId: string) {
@@ -75,7 +78,7 @@ export async function refundNoAnswer(reqId: string) {
   const src = s.topups.find((t) => t.amount - t.refunded >= amount);
   if (!src) throw new Error("No PayPal top-up left to refund against");
   const r = await refundCapture(src.captureId, amount, `Reverso: buyer ${reqId} did not answer within 48 hours`, `refund-${reqId}`);
-  src.refunded += amount; d.refunded = amount; d.stage = 4; // the fee returns to the dealer's PayPal account, not to the balance
+  src.refunded += amount; d.refunded = amount; d.stage = 4; spend(s).refunded += amount; // the fee returns to the dealer's PayPal account, not to the balance
   log(`Buyer ${reqId} never answered. ${usd(amount)} refunded to you through PayPal (refund ${r.id}).`);
   return r;
 }
@@ -166,7 +169,7 @@ export function choose(reqId: string, offerId: string) {
   r.chosen = offerId; r.status = "chosen"; r.holdUntil = Date.now() + HOLD_MS;
   if (o.dealerId === ME) {
     s.deals.unshift({ reqId, name: r.buyer.name, email: r.buyer.email, phone: r.buyer.phone, car: `${r.model} ${r.trim}`, price: o.price, stage: 0, paid: 0, refunded: 0 });
-    charge(reqId, FEES.contact, `The buyer of ${reqId} chose you. Contact released;`);
+    charge(reqId, FEES.contact, `The buyer of ${reqId} chose you. Contact released;`, "contact");
   } else log(`The buyer of ${reqId} chose another dealer. You paid nothing.`);
 }
 const mineChosen = (r: Req) => r.offers.find((o) => o.id === r.chosen)?.dealerId === ME;
@@ -174,12 +177,12 @@ const mineChosen = (r: Req) => r.offers.find((o) => o.id === r.chosen)?.dealerId
 export function bookVisit(reqId: string, slot: string) {
   const s = store(), r = s.reqs.find((x) => x.id === reqId); if (!r?.chosen || r.visit) throw new Error("Can't book a visit now");
   r.visit = slot;
-  const d = s.deals.find((x) => x.reqId === reqId); if (d && mineChosen(r)) { d.visit = slot; d.stage = Math.max(d.stage, 1) as Stage; charge(reqId, FEES.visit, `Visit booked for ${slot};`); }
+  const d = s.deals.find((x) => x.reqId === reqId); if (d && mineChosen(r)) { d.visit = slot; d.stage = Math.max(d.stage, 1) as Stage; charge(reqId, FEES.visit, `Visit booked for ${slot};`, "visit"); }
 }
 export function reserve(reqId: string, authorizationId: string, amount: number) {
   const s = store(), r = s.reqs.find((x) => x.id === reqId); if (!r?.chosen || r.reservation) throw new Error("Can't reserve now");
   r.reservation = { authorizationId, amount };
-  const d = s.deals.find((x) => x.reqId === reqId); if (d && mineChosen(r)) { d.stage = Math.max(d.stage, 2) as Stage; charge(reqId, FEES.reserve, `The buyer of ${reqId} reserved with a ${usd(amount)} PayPal deposit;`); }
+  const d = s.deals.find((x) => x.reqId === reqId); if (d && mineChosen(r)) { d.stage = Math.max(d.stage, 2) as Stage; charge(reqId, FEES.reserve, `The buyer of ${reqId} reserved with a ${usd(amount)} PayPal deposit;`, "reserve"); }
 }
 export function confirmPurchase(reqId: string, payoutBatch: string) {
   const s = store(), r = s.reqs.find((x) => x.id === reqId); if (!r?.chosen || r.purchase) throw new Error("Can't confirm now");
@@ -203,7 +206,7 @@ export function buyerView(id: string) {
 export function dealerView() {
   const s = store();
   return {
-    dealer: "Bayside Motors", balance: s.balance, fees: FEES, log: s.log.slice(0, 14), deals: s.deals,
+    dealer: "Bayside Motors", balance: s.balance, fees: FEES, log: s.log.slice(0, 14), deals: s.deals, spend: spend(s),
     topups: s.topups.map((t) => ({ amount: t.amount, refunded: t.refunded, at: t.at })),
     inventory: CATALOG.flatMap((c) => c.trims.map((t) => ({ key: `${c.model}|${t}`, model: c.model, trim: t, msrp: (c.msrp as Record<string, number>)[t], otd: otd((c.msrp as Record<string, number>)[t]), floor: s.floors[`${c.model}|${t}`] }))),
     rows: s.reqs.map((r) => {
@@ -211,7 +214,7 @@ export function dealerView() {
       const won = !!r.chosen && mine?.id === r.chosen, best = ranked.find((o) => o !== mine);
       return { id: r.id, model: `${r.model} ${r.trim}`, payment: r.profile.payment, budget: r.profile.budget, when: r.profile.when, buyer: r.buyer.verified ? "Verified" : "Unverified",
         bids: r.offers.length, myPrice: mine?.price ?? null, rank: mine ? ranked.findIndex((o) => o.id === mine.id) + 1 : null,
-        myFloor: mine ? r.myFloor ?? null : null, myRealCost: mine?.realCost ?? null, reasoning: mine?.reasoning ?? "", note: mine?.note ?? "",
+        myFloor: mine ? r.myFloor ?? null : null, myRealCost: mine?.realCost ?? null, bestRival: mine && best ? best.realCost : null, reasoning: mine?.reasoning ?? "", note: mine?.note ?? "",
         // What real cost the buyer must see from you to lead: just under the best rival.
         toLead: mine && best && ranked[0] !== mine ? best.realCost - 1 : null,
         aheadBy: mine && best && ranked[0] === mine ? best.realCost - mine.realCost : null, // room to raise your floor and still lead

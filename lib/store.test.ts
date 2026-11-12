@@ -70,6 +70,7 @@ describe("pay per outcome", () => {
     S.reserve(r.id, "AUTH-1", 500);
     expect(S.store().balance).toBe(350);
     expect(S.store().deals[0]).toMatchObject({ paid: 150, stage: 2 });
+    expect(S.dealerView().spend).toEqual({ contact: 40, visit: 35, reserve: 75, refunded: 0 });
   });
 
   it("charges nothing when the buyer picks another dealer", async () => {
@@ -88,6 +89,7 @@ describe("pay per outcome", () => {
     await S.refundNoAnswer(r.id);
     expect(refundCapture).toHaveBeenCalledWith("CAP-1", 40, expect.any(String), `refund-${r.id}`);
     expect(S.store().deals[0]).toMatchObject({ refunded: 40, stage: 4 });
+    expect(S.dealerView().spend.refunded).toBe(40);
     await expect(S.refundNoAnswer(r.id)).rejects.toThrow();
   });
 });
