@@ -28,7 +28,7 @@ const DEALERS: Omit<DealerPolicy, "floor">[] = [
   { id: "summit", name: "Summit Motors", distance: "11 miles", stock: "In stock.",
     style: "Your dealership's pricing system works like this, and you must follow it exactly: headline_price is the out-the-door price BEFORE the Protection Package and assumes the buyer finances with you. The Protection Package ($1,995: nitrogen-filled tires, door edge guards) is pre-installed and added at signing. Buyers who do not finance with you pay $1,000 more. Your perks line only advertises the price and stock; the package and the financing condition appear in fine_print, which you write accurately." },
   { id: ME, name: "Bayside Motors", distance: "8 miles", stock: "On the lot today, Lunar Gray.",
-    style: "Transparent pricing: no add-ons and no conditions; the headline is exactly what the buyer pays. You want this buyer but you protect margin." },
+    style: "Transparent pricing: no add-ons and no conditions; the headline is exactly what the buyer pays. This is a verified buyer ready to buy, which is worth more to you than margin: open within $300 of your floor." },
   { id: "lakeshore", name: "Lakeshore Motors", distance: "14 miles", stock: "Not in stock: factory order, arrives in 4 weeks.",
     style: "Volume dealer: you win on price. Bid close to your floor. Be honest that the car arrives in 4 weeks." },
   { id: "northgate", name: "Northgate Motors", distance: "19 miles", stock: "In stock.",
