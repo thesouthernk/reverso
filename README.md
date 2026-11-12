@@ -86,6 +86,23 @@ Two use tool calling with the PayPal Agent Toolkit (`lib/deal-agent.ts`, `lib/fi
 
 The public demo caps model use per visitor and per day (`lib/limit.ts`).
 
+## Use it from Claude (MCP)
+
+Reverso is also a remote MCP server, so buyers and dealers can use it from their own Claude: `https://reverso-moko.onrender.com/api/mcp` (Streamable HTTP, `lib/mcp.ts`).
+
+```bash
+claude mcp add --transport http reverso https://reverso-moko.onrender.com/api/mcp
+```
+
+In Claude on the web or desktop: Settings, Connectors, Add custom connector, same URL.
+
+| Side | Tools |
+| --- | --- |
+| Buyer | `list_cars`, `request_car` (the wish: car, city, payment, budget, timing, contact), `get_offers` (ranked by real cost, dealers anonymous), `choose_offer` (only that dealer gets the contact) |
+| Dealer (Bayside Motors in the demo) | `dealer_inventory`, `dealer_set_floor`, `dealer_requests` (live requests, position, gap to lead), `dealer_rebid` (new floor on one request, the agent re-bids), `dealer_account` (balance, fees, buyers who picked you) |
+
+Try: *"Use Reverso to get me out-the-door offers on a Terra Hybrid Touring in Austin, paying cash, this week."* `request_car` returns a `request_key`; only a caller holding it can read the offers or pick one. Requests made over MCP skip the one-time code, so dealers see them as unverified. Reserving with the PayPal deposit stays on the web app.
+
 ## Run it locally
 
 ```bash

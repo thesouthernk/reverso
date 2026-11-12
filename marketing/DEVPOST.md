@@ -28,6 +28,7 @@ Reverso reverses that order.
 - PayPal sandbox REST APIs: Orders v2 capture (dealer top-ups), Orders v2 authorize and void (refundable reservation deposit), Captures refund (contact fee back when a buyer goes silent), Payouts (gas card), and the JS SDK buttons.
 - PayPal Agent Toolkit (`@paypal/agent-toolkit`) for the two agents that move money: `create_order` and `pay_order` for the closing agent, `create_refund`, `get_refund` and `list_transactions` for the finance agent. Claude calls them through tool use.
 - A payment gate in code sits between the agents and the Toolkit: the closing agent can create exactly one $500 order, only after accepting an offer within the buyer's ceiling; the finance agent can refund only the capture and amount that the refund plan approved. The model proposes; the code decides what money moves.
+- Reverso is also a remote MCP server (`/api/mcp`): from their own Claude, a buyer can post a wish for a car, read the ranked offers and pick one, and a dealer can set floors, watch live requests and re-bid. Add it with `claude mcp add --transport http reverso https://reverso-moko.onrender.com/api/mcp`.
 - Vitest tests for the marketplace rules and the payment gates, with Claude and PayPal faked, run in GitHub Actions on every push.
 
 ## Red team: dealers that cheat, agents that get hijacked
@@ -51,4 +52,4 @@ With the real model in a pilot, the fine-print reviewer priced 7/7 planted hidde
 - Agents that negotiate need room to negotiate. Dealer agents now open above their floors and come down in real steps when pushed, so the closing agent has something to win.
 
 ## What's next
-A bigger red-team run against the live model, real SMS verification, dealer inventory feeds, persistent storage, used cars and trade-ins.
+A bigger red-team run against the live model, real SMS verification, per-dealer sign-in for the MCP tools, dealer inventory feeds, persistent storage, used cars and trade-ins.
