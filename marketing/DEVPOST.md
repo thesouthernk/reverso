@@ -19,7 +19,7 @@ Reverso reverses that order.
 - The buyer sees the exact car, gets the price held for 30 minutes, and can reserve it with a refundable $500 PayPal authorization or book a visit.
 - When the buyer confirms they bought the car, PayPal Payouts sends them a $50 gas card. That closes the loop: we know the sale happened.
 - Dealers fund a balance with PayPal and pay per outcome: $40 for a contact, $75 for a booked visit, $150 for a reservation. If the buyer doesn't answer in 48 hours, the contact fee goes back through a PayPal refund.
-- Dealers watch requests, their bid and their position live in an AG Grid board, edit their floors in the grid, and follow chosen buyers through a pipeline.
+- Dealers steer their AI agent from an AG Grid board. Each live request shows the agent's bid, the buyer's real cost, the position and the gap to the next offer ("Ahead by $49" or "Lead under $37,299"). Edit the floor on a live request and the agent re-bids on the spot: the row shows "Re-bidding", the new bid and position flash in, and the buyer's offer list re-ranks. Hovering a bid shows the agent's reasoning; hovering the real cost shows the buyer's agent's note. A second editable grid sets default floors per model and trim, and chosen buyers move through a pipeline.
 
 ## How we built it
 - Next.js (App Router) and React, AG Grid Community for the dealer board and floor editor, hosted on Render.
