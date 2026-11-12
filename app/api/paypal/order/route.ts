@@ -5,7 +5,6 @@ import { DEPOSIT, store } from "@/lib/store";
 export async function POST(request: Request) {
   const { kind, reqId } = await request.json().catch(() => ({}));
   try {
-    if (kind === "verify") return Response.json(await createOrder("AUTHORIZE", 1, "Reverso identity check: authorized and voided at once, never charged"));
     if (kind === "topup") return Response.json(await createOrder("CAPTURE", 500, "Reverso dealer balance: pay-per-outcome contacts"));
     if (kind === "deposit") {
       const r = store().reqs.find((x) => x.id === reqId);

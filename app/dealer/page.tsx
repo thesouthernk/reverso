@@ -9,7 +9,7 @@ ModuleRegistry.registerModules([AllCommunityModule]);
 
 type Row = { id: string; model: string; payment: string; budget: string; when: string; buyer: string; bids: number; myPrice: number | null; rank: number | null; status: string };
 type Inv = { key: string; model: string; trim: string; msrp: number; otd: number; floor: number };
-type Deal = { reqId: string; name: string; email: string; car: string; price: number; stage: number; paid: number; refunded: number; visit?: string };
+type Deal = { reqId: string; name: string; email: string; phone: string; car: string; price: number; stage: number; paid: number; refunded: number; visit?: string };
 type View = { dealer: string; balance: number; fees: { contact: number; visit: number; reserve: number }; rows: Row[]; inventory: Inv[]; deals: Deal[]; topups: { amount: number; refunded: number }[]; log: { at: number; text: string }[]; clientId: string };
 
 const usd = (n: number) => "$" + new Intl.NumberFormat("en-US").format(Math.round(n));
@@ -96,7 +96,7 @@ export default function Dealer() {
 
       <section className="summary">
         <h1>Buyers asking for a price right now</h1>
-        <p className="lede">Every buyer is identity-verified with PayPal. You see the car, never the person. You pay only for outcomes, from a balance you fund with PayPal: {usd(view?.fees.contact ?? 40)} for a contact, {usd(view?.fees.visit ?? 75)} if they book a visit, {usd(view?.fees.reserve ?? 150)} if they reserve.</p>
+        <p className="lede">Every buyer has a verified phone. You see the car, never the person. You pay only for outcomes, from a balance you fund with PayPal: {usd(view?.fees.contact ?? 40)} for a contact, {usd(view?.fees.visit ?? 75)} if they book a visit, {usd(view?.fees.reserve ?? 150)} if they reserve.</p>
       </section>
 
       <section className="stats" aria-label="Today at a glance">
@@ -131,7 +131,7 @@ export default function Dealer() {
                     <p className="name">{d.name}</p>
                     <p>{d.car}</p>
                     <p>Accepted {usd(d.price)} out the door</p>
-                    <p className="reach">{d.email}</p>
+                    <p className="reach">{d.phone}, {d.email}</p>
                     {d.visit && <p>Visit: {d.visit}</p>}
                     <p className="fine">{usd(d.paid)} charged{d.refunded ? `, ${usd(d.refunded)} refunded through PayPal` : ""}</p>
                     {d.stage === 0 && !d.refunded && <div className="moves"><button className="link" onClick={() => act({ action: "noanswer", id: d.reqId }, "Contact fee refunded through PayPal.")}>Buyer didn&apos;t answer in 48 h: refund</button></div>}

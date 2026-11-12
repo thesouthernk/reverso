@@ -72,17 +72,3 @@ export async function payout(email: string, amount: number, note: string, batchI
   });
   return { batchId: r.batch_header?.payout_batch_id as string, status: r.batch_header?.batch_status as string };
 }
-
-// ---- Identity: a $1 authorization the buyer approves in PayPal, read and voided at once ----
-export async function verifyByAuthorization(orderId: string) {
-  const o = await call<any>("POST", `/v2/checkout/orders/${orderId}/authorize`, {});
-  const auth = o.purchase_units?.[0]?.payments?.authorizations?.[0];
-  if (!auth) throw new Error(`Verification not authorized: ${o.status}`);
-  await voidAuthorization(auth.id); // nothing is ever charged
-  const p = o.payer ?? {};
-  return {
-    name: [p.name?.given_name, p.name?.surname].filter(Boolean).join(" ") || "PayPal user",
-    email: p.email_address as string,
-    payerId: p.payer_id as string,
-  };
-}

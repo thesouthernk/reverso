@@ -10,7 +10,7 @@ type Req = {
   chosen: string | null; holdUntil: number | null; visit: string | null; reserved: boolean; purchased: boolean; deposit: number; gasCard: number;
   buyer: { name: string; email: string }; offers: Offer[];
 };
-type Buyer = { name: string; email: string; verified: boolean };
+type Buyer = { name: string; email: string; phone: string; verified: boolean };
 type Parsed = { model: string; trim: string; reply: string; answered: Partial<Record<keyof Profile, string | null>> };
 
 const usd = (n: number) => "$" + new Intl.NumberFormat("en-US").format(Math.round(n));
@@ -57,6 +57,36 @@ function PayPalButton({ ready, createOrder, onApprove, onError }: { ready: boole
   return <div ref={box} className="ppbox" />;
 }
 
+/** Contact details plus a one-time code. Only the dealer the buyer picks ever sees them. */
+function VerifyForm({ onDone }: { onDone: (b: { name: string; email: string; phone: string }) => void }) {
+  const [f, setF] = useState({ name: "", email: "", phone: "" });
+  const [code, setCode] = useState(""), [demo, setDemo] = useState(""), [err, setErr] = useState(""), [busy, setBusy] = useState(false);
+  async function post(body: object) {
+    setBusy(true); setErr("");
+    const r = await fetch("/api/verify", { method: "POST", body: JSON.stringify(body) }); const j = await r.json();
+    setBusy(false); if (!r.ok) setErr(j.error); return r.ok ? j : null;
+  }
+  return (
+    <div className="verify">
+      {!demo ? (
+        <form onSubmit={async (e) => { e.preventDefault(); const j = await post({ step: "start", ...f }); if (j) setDemo(j.demoCode); }}>
+          <input aria-label="Full name" placeholder="Full name" value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} autoComplete="name" />
+          <input aria-label="Email" placeholder="Email" type="email" value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} autoComplete="email" />
+          <input aria-label="Mobile phone" placeholder="Mobile phone" type="tel" value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value })} autoComplete="tel" />
+          <button className="go" disabled={busy}>Send me a code</button>
+        </form>
+      ) : (
+        <form onSubmit={async (e) => { e.preventDefault(); const j = await post({ step: "check", code }); if (j) onDone(j); }}>
+          <p className="fine">We texted a 6-digit code to {f.phone}. <span className="demo">Demo: SMS isn&apos;t connected, your code is <b>{demo}</b></span></p>
+          <input aria-label="6-digit code" placeholder="6-digit code" inputMode="numeric" value={code} onChange={(e) => setCode(e.target.value)} autoComplete="one-time-code" />
+          <button className="go" disabled={busy || code.length < 6}>Verify</button>
+        </form>
+      )}
+      {err && <p className="error" role="alert">{err}</p>}
+    </div>
+  );
+}
+
 function Hold({ until }: { until: number }) {
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => { const t = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(t); }, []);
@@ -88,7 +118,7 @@ export default function BuyerPage() {
   const [confirming, setConfirming] = useState<string | null>(null);
   const [booking, setBooking] = useState(false);
   const end = useRef<HTMLDivElement>(null);
-  const ppReady = usePayPal(parsed ? me?.clientId ?? null : null, "authorize");
+  const ppReady = usePayPal(req?.chosen ? me?.clientId ?? null : null, "authorize");
 
   // Who is this buyer? (Verified earlier in this browser session, or not yet.)
   useEffect(() => { fetch("/api/state?as=me").then((r) => r.json()).then(setMe); }, []);
@@ -139,15 +169,7 @@ export default function BuyerPage() {
     const q = missing[0]; if (!q || !text.trim()) return;
     setAnswers((a) => ({ ...a, [q.key]: text.trim() })); setTyped("");
   }
-  const createVerify = useCallback(async () => {
-    const r = await fetch("/api/paypal/order", { method: "POST", body: JSON.stringify({ kind: "verify" }) });
-    const j = await r.json(); if (!r.ok) throw new Error(j.error); return j.id as string;
-  }, []);
-  const approveVerify = useCallback(async (orderId: string) => {
-    const r = await fetch("/api/paypal/verify", { method: "POST", body: JSON.stringify({ orderId }) });
-    const j = await r.json(); if (!r.ok) { setErr(j.error); return; }
-    setMe((m) => ({ clientId: m?.clientId ?? "", buyer: { name: j.name, email: j.email, verified: true } }));
-  }, []);
+
   async function act(body: object) {
     setErr("");
     const r = await fetch("/api/state", { method: "POST", body: JSON.stringify({ ...body, id: reqId }) });
@@ -214,11 +236,8 @@ export default function BuyerPage() {
             <div className="qa">
               <Words text="Last thing: confirm it's really you. Dealers only answer verified people, and they see nothing about you until you pick an offer." />
               {verified ? (
-                <p className="verified">Verified with PayPal <span>{me!.buyer!.name}, {me!.buyer!.email.replace(/^(.).*(@.*)$/, "$1•••$2")}</span></p>
-              ) : (
-                <div className="reply stack"><PayPalButton ready={ppReady} createOrder={createVerify} onApprove={approveVerify} onError={setErr} />
-                  <small className="fine">A $1 authorization that PayPal voids at once. You are never charged.</small></div>
-              )}
+                <p className="verified">Verified <span>{me!.buyer!.name}, {(me!.buyer!.phone ?? "").replace(/\d(?=\d{4})/g, "•")}</span></p>
+              ) : <VerifyForm onDone={(b) => setMe((m) => ({ clientId: m?.clientId ?? "", buyer: { ...b, verified: true } }))} />}
             </div>
           )}
 
@@ -277,8 +296,9 @@ export default function BuyerPage() {
           {chosen && <Words text={`It's ${chosen.dealer}, ${chosen.distance} away. They have your contact now and this price is on record at ${usd(chosen.realCost)}. The other ${count - 1} dealers never learned who you are.`} />}
           {chosen && req && (
             <section className="sheet">
-              <div className="photos" aria-label="The car">
-                <figure className="hero-car"><img src="/car.jpg" alt={`${req.model} ${req.trim}`} /><figcaption>Illustration</figcaption></figure>
+              <div className="photos" aria-label="Photos of the car">
+                <figure><img src="/car-1.jpg" alt={`${req.model} ${req.trim}, side view`} /></figure>
+                <figure><img src="/car-2.jpg" alt={`${req.model} ${req.trim}, parked in a field`} /></figure>
               </div>
               <dl className="ask plain">
                 <div><dt>Car</dt><dd>{req.model} {req.trim}, new</dd></div>

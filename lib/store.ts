@@ -3,7 +3,7 @@
 import { CATALOG, dealerBid, reviewOffers, type DealerBid, type DealerPolicy } from "./ai";
 import { refundCapture } from "./paypal";
 
-export type Buyer = { name: string; email: string; payerId: string; verified: boolean };
+export type Buyer = { name: string; email: string; phone: string; verified: boolean };
 export type Profile = { city: string; travel: string; wait: string; budget: string; payment: string; when: string };
 export type Offer = { id: string; dealerId: string; dealer: string; price: number; perks: string; finePrint: string; realCost: number; applies: boolean; note: string; round: number; improved: boolean };
 export type Stage = 0 | 1 | 2 | 3 | 4; // contact, visit, reserved, sold, refunded
@@ -14,7 +14,7 @@ export type Req = {
   visit?: string; reservation?: { authorizationId: string; amount: number; voided?: boolean };
   purchase?: { payoutBatch: string; amount: number };
 };
-export type Deal = { reqId: string; name: string; email: string; car: string; price: number; stage: Stage; paid: number; refunded: number; visit?: string };
+export type Deal = { reqId: string; name: string; email: string; phone: string; car: string; price: number; stage: Stage; paid: number; refunded: number; visit?: string };
 type TopUp = { captureId: string; amount: number; refunded: number; at: number };
 
 export const ME = "bayside";
@@ -23,17 +23,18 @@ export const DEPOSIT = 500, GAS_CARD = 50, HOLD_MS = 30 * 60_000;
 const TAX = 0.0625, DOC = 165;
 export const otd = (msrp: number) => Math.round(msrp * (1 + TAX) + DOC);
 
+// Each dealer agent gets a distinct strategy, so offers really differ.
 const DEALERS: Omit<DealerPolicy, "floor">[] = [
   { id: "summit", name: "Summit Motors", distance: "11 miles", stock: "In stock.",
     style: "Your dealership's pricing system works like this, and you must follow it exactly: headline_price is the out-the-door price BEFORE the Protection Package and assumes the buyer finances with you. The Protection Package ($1,995: nitrogen-filled tires, door edge guards) is pre-installed and added at signing. Buyers who do not finance with you pay $1,000 more. Your perks line only advertises the price and stock; the package and the financing condition appear in fine_print, which you write accurately." },
   { id: ME, name: "Bayside Motors", distance: "8 miles", stock: "On the lot today, Lunar Gray.",
     style: "Transparent pricing: no add-ons and no conditions; the headline is exactly what the buyer pays. You want this buyer but you protect margin." },
-  { id: "lakeshore", name: "Lakeshore Motors", distance: "14 miles", stock: "Not in stock: arrives in 4 weeks.",
-    style: "Fair, simple pricing. Be honest that the car arrives in 4 weeks." },
+  { id: "lakeshore", name: "Lakeshore Motors", distance: "14 miles", stock: "Not in stock: factory order, arrives in 4 weeks.",
+    style: "Volume dealer: you win on price. Bid close to your floor. Be honest that the car arrives in 4 weeks." },
   { id: "northgate", name: "Northgate Motors", distance: "19 miles", stock: "In stock.",
-    style: "Premium service. All-weather floor mats included. You rarely discount much." },
+    style: "Premium dealer: every car carries a $1,500 market adjustment, included in your out-the-door price. You include all-weather mats and 2 years of maintenance and you rarely discount." },
 ];
-const FLOOR_PCT: Record<string, number> = { summit: 0.955, lakeshore: 0.99, northgate: 1.0 };
+const FLOOR_PCT: Record<string, number> = { summit: 0.94, lakeshore: 0.955, northgate: 1.035 };
 
 type Log = { at: number; text: string };
 type Store = {
@@ -44,7 +45,7 @@ type Store = {
 const g = globalThis as unknown as { __reverso?: Store };
 function fresh(): Store {
   const floors: Record<string, number> = {};
-  CATALOG.forEach((c) => c.trims.forEach((t) => { floors[`${c.model}|${t}`] = Math.round(otd((c.msrp as Record<string, number>)[t]) * 0.985 / 50) * 50; }));
+  CATALOG.forEach((c) => c.trims.forEach((t) => { floors[`${c.model}|${t}`] = Math.round(otd((c.msrp as Record<string, number>)[t]) * 0.955 / 50) * 50; }));
   return { seq: 4820, reqs: [], deals: [], log: [], balance: 0, topups: [], floors };
 }
 export const store = () => (g.__reverso ??= fresh());
@@ -140,7 +141,7 @@ export function choose(reqId: string, offerId: string) {
   if (!r || !o || r.chosen || r.status !== "open") throw new Error("This offer can't be chosen now");
   r.chosen = offerId; r.status = "chosen"; r.holdUntil = Date.now() + HOLD_MS;
   if (o.dealerId === ME) {
-    s.deals.unshift({ reqId, name: r.buyer.name, email: r.buyer.email, car: `${r.model} ${r.trim}`, price: o.price, stage: 0, paid: 0, refunded: 0 });
+    s.deals.unshift({ reqId, name: r.buyer.name, email: r.buyer.email, phone: r.buyer.phone, car: `${r.model} ${r.trim}`, price: o.price, stage: 0, paid: 0, refunded: 0 });
     charge(reqId, FEES.contact, `The buyer of ${reqId} chose you. Contact released;`);
   } else log(`The buyer of ${reqId} chose another dealer. You paid nothing.`);
 }

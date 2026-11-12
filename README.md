@@ -15,7 +15,7 @@ Ask for the price of a new car online and you get calls instead of a price. Quot
 
 **Buyer**
 1. Says which car they want, in their own words. A Claude agent maps it to the catalog and asks only what a good salesperson would ask: where, how far they'd drive, whether they can wait, budget, how they'll pay, when they'll buy.
-2. **Verifies their identity with PayPal**: a $1 authorization they approve in PayPal, which Reverso reads (name, email, payer ID) and voids at once. Nothing is charged.
+2. **Verifies their contact details** with a one-time code. (No SMS provider is connected in the demo, so the code is shown on screen.) Dealers never see these details unless the buyer picks them.
 3. The request goes to every dealer with **no name and no number**.
 4. Each dealer's **Claude pricing agent** sends a sealed out-the-door offer within the floor its dealer set, then may improve it once after learning its position.
 5. The buyer's **Claude agent reads every quote's fine print** (mandatory add-ons, doc fees, financing-only prices) and ranks offers by what this buyer would really pay.
@@ -34,7 +34,6 @@ Ask for the price of a new car online and you get calls instead of a price. Quot
 | What | PayPal API | Where |
 | --- | --- | --- |
 | Dealer funds its balance | Orders v2 (`CAPTURE`) + JS SDK buttons | `app/dealer/page.tsx`, `app/api/paypal/order`, `app/api/paypal/capture` |
-| Buyer identity check | Orders v2 (`AUTHORIZE`) then Authorizations `void` | `app/api/paypal/verify`, `lib/paypal.ts` |
 | Buyer reserves the car | Orders v2 (`AUTHORIZE`), $500 hold | `app/api/paypal/authorize` |
 | Fee refund when a buyer never answers | Payments v2 Captures `refund` | `lib/store.ts` → `refundNoAnswer` |
 | Gas card for confirming the purchase | Payouts v1 | `app/api/state` (`confirm`) |
@@ -69,7 +68,7 @@ Every PayPal window in the demo is the **PayPal sandbox**. Log in with this sand
 
 1. Open https://reverso-moko.onrender.com/dealer and press the PayPal button to add $500 to Bayside Motors' balance. (State lives in memory, so after the free instance sleeps the balance starts at $0 again.)
 2. Open https://reverso-moko.onrender.com/, press the first suggestion and answer the questions.
-3. Verify with PayPal (a $1 authorization voided at once). The dealer agents bid; the auction takes about 30 seconds.
+3. Enter any name, email and phone, then the demo code shown on screen. The dealer agents bid; the auction takes about 30 seconds.
 4. Pick an offer, reserve it with PayPal, then press "Yes, I bought it" to receive the $50 gas card by PayPal Payouts.
 5. Back in the dealer view, see the fees charged step by step. On a new contact, "Buyer didn't answer in 48 h: refund" refunds the fee through PayPal.
 
@@ -77,7 +76,7 @@ Every PayPal window in the demo is the **PayPal sandbox**. Log in with this sand
 
 - State lives in memory on one server; a restart clears it.
 - Car brands and models are invented on purpose.
-- The SUV model is Kenney's Car Kit (CC0). The 3D film in `marketing/video2` is made with HyperFrames.
+- Car photos: Pexels (free license), photos 27497575 and 27497656. The 3D SUV in the film is Kenney's Car Kit (CC0). The film in `marketing/video2` is made with HyperFrames.
 
 ## License
 
