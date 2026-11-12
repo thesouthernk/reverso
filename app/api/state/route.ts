@@ -1,4 +1,4 @@
-import { bookVisit, buyerView, choose, confirmPurchase, createRequest, dealerView, GAS_CARD, refundNoAnswer, setFloor, store } from "@/lib/store";
+import { bookVisit, buyerView, choose, confirmPurchase, createRequest, dealerView, GAS_CARD, rebid, refundNoAnswer, setFloor, store } from "@/lib/store";
 import { currentBuyer } from "@/lib/session";
 import { clientId, payout } from "@/lib/paypal";
 import { allow } from "@/lib/limit";
@@ -36,6 +36,13 @@ export async function POST(request: Request) {
         const p = await payout(buyer.email, GAS_CARD, `Thanks for confirming your ${r.model} purchase. Here is your gas card.`, `gas-${r.id.slice(1)}-${Date.now()}`);
         confirmPurchase(r.id, p.batchId);
         return Response.json({ ok: true, batch: p.batchId });
+      }
+      case "rebid": {
+        if (!allow(request, "rebid", 12, 200)) return Response.json({ error: "Demo limit reached. Try again in an hour." }, { status: 429 });
+        const id = str(body.id), floor = Number(body.floor);
+        if (!store().reqs.some((r) => r.id === id && r.status === "open" && !r.chosen)) return Response.json({ error: "This request can't be re-bid now" }, { status: 409 });
+        void rebid(id, floor).catch(() => {}); // runs in the background; the grid shows "Re-bidding", then the new bid flashes in
+        return Response.json({ ok: true });
       }
       case "floor": return Response.json({ ok: setFloor(str(body.key), Number(body.floor)) });
       case "noanswer": { const r = await refundNoAnswer(str(body.id)); return Response.json({ ok: true, refund: r.id }); }

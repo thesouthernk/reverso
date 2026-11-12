@@ -7,7 +7,8 @@ import { AllCommunityModule, ModuleRegistry, themeQuartz, type ColDef, type ICel
 
 ModuleRegistry.registerModules([AllCommunityModule]);
 
-type Row = { id: string; model: string; payment: string; budget: string; when: string; buyer: string; bids: number; myPrice: number | null; rank: number | null; status: string };
+type Row = { id: string; model: string; payment: string; budget: string; when: string; buyer: string; bids: number; myPrice: number | null; rank: number | null; status: string;
+  myFloor: number | null; myRealCost: number | null; reasoning: string; note: string; toLead: number | null; aheadBy: number | null };
 type Inv = { key: string; model: string; trim: string; msrp: number; otd: number; floor: number };
 type Deal = { reqId: string; name: string; email: string; phone: string; car: string; price: number; stage: number; paid: number; refunded: number; visit?: string };
 type View = { dealer: string; balance: number; fees: { contact: number; visit: number; reserve: number }; rows: Row[]; inventory: Inv[]; deals: Deal[]; topups: { amount: number; refunded: number }[]; log: { at: number; text: string }[]; clientId: string };
@@ -31,9 +32,10 @@ export default function Dealer() {
   const [view, setView] = useState<View | null>(null);
   const [err, setErr] = useState("");
   const [note, setNote] = useState("");
-  const box = useRef<HTMLDivElement>(null), rendered = useRef(false);
+  const box = useRef<HTMLDivElement>(null), rendered = useRef(false), editing = useRef(false);
 
-  const tick = useCallback(async () => { const r = await fetch("/api/state"); if (r.ok) setView(await r.json()); }, []);
+  // Polling pauses while a cell is being edited, so a refresh never knocks the dealer out of the editor.
+  const tick = useCallback(async () => { if (editing.current) return; const r = await fetch("/api/state"); if (r.ok && !editing.current) setView(await r.json()); }, []);
   useEffect(() => { tick(); const t = setInterval(tick, 1000); return () => clearInterval(t); }, [tick]);
 
   // PayPal checkout to fund the pay-per-outcome balance.
@@ -63,15 +65,25 @@ export default function Dealer() {
   }
 
   const cols = useMemo((): ColDef<Row>[] => [
-    { field: "id", headerName: "Request", flex: 0.9, minWidth: 84 },
-    { field: "model", headerName: "Car", flex: 2.2, minWidth: 190 },
-    { field: "payment", flex: 2.0, minWidth: 150 },
-    { field: "budget", flex: 1.4, minWidth: 120 },
-    { field: "when", headerName: "Buying", flex: 1.3, minWidth: 130, cellRenderer: pill((r) => (r.when === "This week" ? "ok" : "")) },
-    { field: "bids", headerName: "Bids", flex: 0.6, minWidth: 60, enableCellChangeFlash: true },
-    { field: "myPrice", headerName: "Your bid", flex: 1.1, minWidth: 100, enableCellChangeFlash: true, valueFormatter: (p) => (p.value == null ? "" : usd(p.value)) },
+    { field: "id", headerName: "Request", flex: 0.8, minWidth: 82 },
+    { field: "model", headerName: "Car", flex: 1.6, minWidth: 150 },
+    { field: "payment", flex: 1.5, minWidth: 130, tooltipValueGetter: (p) => (p.data ? `${p.data.payment}. Budget: ${p.data.budget}.` : undefined) },
+    { field: "when", headerName: "Buying", flex: 1.1, minWidth: 115, cellRenderer: pill((r) => (r.when === "This week" ? "ok" : "")) },
+    // The agent's control surface: edit this request's floor and the agent re-bids live.
+    { field: "myFloor", headerName: "Your floor (edit)", flex: 1.2, minWidth: 130, enableCellChangeFlash: true, cellEditor: "agNumberCellEditor", cellEditorParams: { min: 1000, precision: 0 },
+      editable: (p) => p.data?.status === "Bidding", cellClass: (p) => (p.data?.status === "Bidding" ? "editable" : ""), valueFormatter: (p) => (p.value == null ? "" : usd(p.value)),
+      tooltipValueGetter: (p) => (p.data?.status === "Bidding" ? "Change it and your agent re-bids on this buyer right now" : undefined) },
+    { field: "myPrice", headerName: "Your bid", flex: 1.1, minWidth: 100, enableCellChangeFlash: true, valueFormatter: (p) => (p.value == null ? "" : usd(p.value)),
+      tooltipValueGetter: (p) => (p.data?.reasoning ? `Your agent: ${p.data.reasoning}` : undefined) },
+    { field: "myRealCost", headerName: "Real cost", flex: 1, minWidth: 100, enableCellChangeFlash: true, valueFormatter: (p) => (p.value == null ? "" : usd(p.value)),
+      tooltipValueGetter: (p) => (p.data?.note ? `Buyer's agent: ${p.data.note}` : undefined) },
     { colId: "rank", headerName: "Position", flex: 1, minWidth: 95, enableCellChangeFlash: true, valueGetter: (p) => (p.data?.rank ? `${p.data.rank} of ${p.data.bids}` : ""), cellRenderer: pill((r) => (r.rank === 1 ? "ok" : "warn")) },
-    { field: "status", flex: 1.1, minWidth: 110, enableCellChangeFlash: true, cellRenderer: pill((r) => ({ Chosen: "ok", New: "new", Live: "live", Bidding: "live", Failed: "warn" } as Record<string, string>)[r.status] ?? "") },
+    { colId: "gap", headerName: "Gap", flex: 1.3, minWidth: 140, enableCellChangeFlash: true,
+      valueGetter: (p) => (!["Bidding", "Re-bidding"].includes(p.data?.status ?? "") ? "" : p.data?.aheadBy != null ? `Ahead by ${usd(p.data.aheadBy)}` : p.data?.toLead != null ? `Lead under ${usd(p.data.toLead + 1)}` : ""),
+      cellRenderer: pill((r) => (r.aheadBy != null ? "ok" : "warn")),
+      tooltipValueGetter: (p) => (!["Bidding", "Re-bidding"].includes(p.data?.status ?? "") ? undefined : p.data?.aheadBy != null ? `The next offer costs the buyer ${usd(p.data.aheadBy)} more. Raise your floor to keep more margin and still lead.`
+        : p.data?.toLead != null ? `The best rival's real cost is ${usd(p.data.toLead + 1)}. Lower your floor below it and your agent can take 1st.` : undefined) },
+    { field: "status", flex: 1.1, minWidth: 110, enableCellChangeFlash: true, cellRenderer: pill((r) => ({ Chosen: "ok", New: "new", Live: "live", Bidding: "live", "Re-bidding": "live", Failed: "warn" } as Record<string, string>)[r.status] ?? "") },
   ], []);
   // The floor your agent will never bid under. Editable right in the grid.
   const invCols = useMemo((): ColDef<Inv>[] => [
@@ -82,6 +94,8 @@ export default function Dealer() {
     { field: "floor", headerName: "Your floor (edit)", flex: 1.3, minWidth: 150, editable: true, cellEditor: "agNumberCellEditor", cellEditorParams: { min: 1000, precision: 0 },
       valueFormatter: (p) => usd(p.value), cellClass: "editable", enableCellChangeFlash: true },
   ], []);
+  const onRebid = useCallback((e: CellValueChangedEvent<Row>) => { if (e.data && e.newValue !== e.oldValue) act({ action: "rebid", id: e.data.id, floor: e.newValue }, `Floor for ${e.data.id} set to ${usd(e.newValue)}. Your agent is re-bidding.`); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  const edit = { onCellEditingStarted: () => { editing.current = true; }, onCellEditingStopped: () => { editing.current = false; } };
   const onFloor = useCallback((e: CellValueChangedEvent<Inv>) => { if (e.data) act({ action: "floor", key: e.data.key, floor: e.newValue }, `Floor saved. Your agent uses it on the next request.`); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const lanes = [0, 1, 2, 3];
@@ -112,7 +126,8 @@ export default function Dealer() {
 
       <div className="board">
         <div className="grid">
-          <AgGridReact<Row> theme={theme} rowData={view?.rows ?? []} columnDefs={cols} getRowId={(p) => p.data.id} domLayout="autoHeight" suppressCellFocus rowHeight={54} headerHeight={46}
+          <AgGridReact<Row> theme={theme} rowData={view?.rows ?? []} columnDefs={cols} getRowId={(p) => p.data.id} domLayout="autoHeight" rowHeight={54} headerHeight={46}
+            onCellValueChanged={onRebid} singleClickEdit stopEditingWhenCellsLoseFocus tooltipShowDelay={150} {...edit}
             overlayNoRowsTemplate="No requests yet. Open the buyer view and ask for a car." />
         </div>
       </div>
@@ -145,10 +160,10 @@ export default function Dealer() {
 
       <section className="pipeline">
         <h2>Your inventory and floors</h2>
-        <p className="lede small">Your agent bids on its own and never goes under these out-the-door floors. Double-click a floor to change it.</p>
+        <p className="lede small">Your agent bids on its own and never goes under these out-the-door floors. Click a floor to change it for new requests; change it on a live request above and your agent re-bids on the spot.</p>
         <div className="grid">
           <AgGridReact<Inv> theme={theme} rowData={view?.inventory ?? []} columnDefs={invCols} getRowId={(p) => p.data.key} domLayout="autoHeight" rowHeight={50} headerHeight={46}
-            onCellValueChanged={onFloor} singleClickEdit stopEditingWhenCellsLoseFocus />
+            onCellValueChanged={onFloor} singleClickEdit stopEditingWhenCellsLoseFocus {...edit} />
         </div>
         <p className="fine">PayPal top-ups available to refund against: {usd(refundable)}</p>
       </section>

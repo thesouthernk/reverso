@@ -25,7 +25,8 @@ Ask for the price of a new car online and you get calls instead of a price. Quot
 
 **Dealer** (Bayside Motors in the demo)
 - Funds a pay-per-outcome balance with **PayPal Checkout**.
-- Watches requests, its agent's bid and its position live in an **AG Grid** board, and edits its price floors directly in an editable AG Grid.
+- Steers its AI agent from an **AG Grid** board. Every live request shows the agent's bid, the buyer's real cost, the position and the gap to the next offer ("Ahead by $49" or "Lead under $37,299"). Edit the floor on a live request and the agent re-bids on the spot: the grid shows "Re-bidding", then the new bid and position flash in, and the buyer's offer list re-ranks. Hover a bid to read the agent's reasoning, or the real cost to read the buyer's agent's note.
+- Sets default floors per model and trim in a second editable AG Grid.
 - Pays $40 for a contact, $75 total if the buyer books a visit, $150 total if they reserve. No ad spend, no cold leads.
 - If a buyer never answers, the contact fee is **refunded through the PayPal Refunds API**.
 

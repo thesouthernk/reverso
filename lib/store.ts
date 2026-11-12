@@ -5,11 +5,12 @@ import { refundCapture } from "./paypal";
 
 export type Buyer = { name: string; email: string; phone: string; verified: boolean };
 export type Profile = { city: string; travel: string; wait: string; budget: string; payment: string; when: string };
-export type Offer = { id: string; dealerId: string; dealer: string; price: number; perks: string; finePrint: string; realCost: number; applies: boolean; note: string; round: number; improved: boolean };
+export type Offer = { id: string; dealerId: string; dealer: string; price: number; perks: string; finePrint: string; realCost: number; applies: boolean; note: string; round: number; improved: boolean; reasoning: string };
 export type Stage = 0 | 1 | 2 | 3 | 4; // contact, visit, reserved, sold, refunded
 export type Req = {
   id: string; createdAt: number; model: string; trim: string; msrp: number; profile: Profile; buyer: Buyer;
   status: "bidding" | "reviewing" | "open" | "chosen" | "failed"; error?: string;
+  myFloor?: number; rebidding?: boolean; // Bayside's floor for this request, editable live from the dealer grid
   offers: Offer[]; summary: string; chosen?: string; holdUntil?: number;
   visit?: string; reservation?: { authorizationId: string; amount: number; voided?: boolean };
   purchase?: { payoutBatch: string; amount: number };
@@ -101,6 +102,7 @@ function policies(r: Req): DealerPolicy[] {
 
 async function runAuction(r: Req) {
   const s = store(), ps = policies(r);
+  r.myFloor = ps.find((p) => p.id === ME)?.floor;
   if (store().balance < FEES.reserve) log(`Request ${r.id}: your agent sat this one out. Top up at least ${usd(FEES.reserve)} to bid.`);
   const ask = { model: r.model, trim: r.trim, msrp: r.msrp, payment: r.profile.payment, when: r.profile.when, budget: r.profile.budget };
   const bids = new Map<string, DealerBid>();
@@ -108,7 +110,7 @@ async function runAuction(r: Req) {
   await Promise.all(ps.map(async (p) => {
     const b = await dealerBid(p, ask, { n: 1 }); const price = Math.max(p.floor, Math.round(b.headline_price));
     bids.set(p.id, { ...b, headline_price: price });
-    r.offers.push({ id: p.id, dealerId: p.id, dealer: p.name, price, perks: b.perks, finePrint: b.fine_print, realCost: price, applies: true, note: "", round: 1, improved: false });
+    r.offers.push({ id: p.id, dealerId: p.id, dealer: p.name, price, perks: b.perks, finePrint: b.fine_print, realCost: price, applies: true, note: "", round: 1, improved: false, reasoning: b.reasoning });
     if (p.id === ME) log(`Your agent bid ${usd(price)} out the door (floor ${usd(p.floor)}). ${b.reasoning}`);
   }));
   await review(r);
@@ -119,7 +121,7 @@ async function runAuction(r: Req) {
     const mine = r.offers.find((o) => o.dealerId === p.id)!, pos = ranked().findIndex((o) => o.dealerId === p.id) + 1;
     const b = await dealerBid(p, ask, { n: 2, myLast: mine.price, position: `${pos} of ${r.offers.length}`, best: leader.realCost });
     const price = Math.max(p.floor, Math.round(b.headline_price));
-    if (price < mine.price) { Object.assign(mine, { price, perks: b.perks, finePrint: b.fine_print, round: 2, improved: true }); bids.set(p.id, { ...b, headline_price: price });
+    if (price < mine.price) { Object.assign(mine, { price, perks: b.perks, finePrint: b.fine_print, round: 2, improved: true, reasoning: b.reasoning }); bids.set(p.id, { ...b, headline_price: price });
       if (p.id === ME) log(`Your agent improved to ${usd(price)}, still above your floor. ${b.reasoning}`); }
     else if (p.id === ME) log(`Your agent held at ${usd(mine.price)}. ${b.reasoning}`);
   }));
@@ -127,6 +129,28 @@ async function runAuction(r: Req) {
   const pos = ranked().findIndex((o) => o.dealerId === ME);
   if (pos >= 0) log(`Request ${r.id}: offers are in. You are ${pos + 1} of ${r.offers.length} by the buyer's real cost.`);
   r.status = "open";
+}
+
+/** The dealer edits this request's floor in the grid; its agent re-bids on the spot and the buyer's agent re-ranks. */
+export async function rebid(reqId: string, floor: number) {
+  const s = store(), r = s.reqs.find((x) => x.id === reqId), mine = r?.offers.find((o) => o.dealerId === ME);
+  if (!r || !mine || r.status !== "open" || r.chosen || r.rebidding) throw new Error("This request can't be re-bid now");
+  if (!Number.isFinite(floor) || floor < 1000) throw new Error("Enter a valid floor");
+  const p = { ...DEALERS.find((d) => d.id === ME)!, floor: Math.round(floor) };
+  const others = r.offers.filter((o) => o !== mine).sort((a, b) => a.realCost - b.realCost);
+  const pos = [...r.offers].sort((a, b) => a.realCost - b.realCost).indexOf(mine) + 1;
+  r.myFloor = p.floor; r.rebidding = true; r.status = "reviewing";
+  log(`Request ${r.id}: floor changed to ${usd(p.floor)}. Your agent is re-bidding.`);
+  try {
+    const b = await dealerBid(p, { model: r.model, trim: r.trim, msrp: r.msrp, payment: r.profile.payment, when: r.profile.when, budget: r.profile.budget },
+      { n: 2, myLast: mine.price, position: `${pos} of ${r.offers.length}`, best: others[0]?.realCost ?? mine.realCost });
+    const price = Math.max(p.floor, Math.round(b.headline_price));
+    if (price !== mine.price) Object.assign(mine, { price, perks: b.perks, finePrint: b.fine_print, improved: price < mine.price || mine.improved, reasoning: b.reasoning });
+    await review(r);
+    const now = [...r.offers].sort((a, c) => a.realCost - c.realCost).indexOf(mine) + 1;
+    log(`Request ${r.id}: your agent bid ${usd(mine.price)} and ${now === pos ? "stays" : `moved from ${pos} to`} ${now} of ${r.offers.length}. ${b.reasoning}`);
+  } catch (e) { log(`Request ${r.id}: re-bid failed (${(e as Error).message}). Your previous offer stands.`); }
+  finally { r.rebidding = false; if (r.status === "reviewing") r.status = "open"; }
 }
 
 async function review(r: Req) {
@@ -184,10 +208,14 @@ export function dealerView() {
     inventory: CATALOG.flatMap((c) => c.trims.map((t) => ({ key: `${c.model}|${t}`, model: c.model, trim: t, msrp: (c.msrp as Record<string, number>)[t], otd: otd((c.msrp as Record<string, number>)[t]), floor: s.floors[`${c.model}|${t}`] }))),
     rows: s.reqs.map((r) => {
       const mine = r.offers.find((o) => o.dealerId === ME), ranked = [...r.offers].sort((a, b) => a.realCost - b.realCost);
-      const won = !!r.chosen && mine?.id === r.chosen;
+      const won = !!r.chosen && mine?.id === r.chosen, best = ranked.find((o) => o !== mine);
       return { id: r.id, model: `${r.model} ${r.trim}`, payment: r.profile.payment, budget: r.profile.budget, when: r.profile.when, buyer: r.buyer.verified ? "Verified" : "Unverified",
         bids: r.offers.length, myPrice: mine?.price ?? null, rank: mine ? ranked.findIndex((o) => o.id === mine.id) + 1 : null,
-        status: won ? "Chosen" : r.chosen ? "Lost" : r.status === "failed" ? "Failed" : mine ? (r.status === "open" ? "Bidding" : "Live") : r.status === "bidding" ? "New" : "Sat out" };
+        myFloor: mine ? r.myFloor ?? null : null, myRealCost: mine?.realCost ?? null, reasoning: mine?.reasoning ?? "", note: mine?.note ?? "",
+        // What real cost the buyer must see from you to lead: just under the best rival.
+        toLead: mine && best && ranked[0] !== mine ? best.realCost - 1 : null,
+        aheadBy: mine && best && ranked[0] === mine ? best.realCost - mine.realCost : null, // room to raise your floor and still lead
+        status: won ? "Chosen" : r.chosen ? "Lost" : r.status === "failed" ? "Failed" : r.rebidding ? "Re-bidding" : mine ? (r.status === "open" ? "Bidding" : "Live") : r.status === "bidding" ? "New" : "Sat out" };
     }),
   };
 }
