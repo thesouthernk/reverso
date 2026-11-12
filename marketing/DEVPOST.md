@@ -4,7 +4,7 @@
 
 - Live demo: https://reverso-moko.onrender.com (free instance: first load can take ~50 s)
 - Code: https://github.com/thesouthernk/reverso (MIT)
-- Video: https://youtu.be/SOPSfoLIK7U
+- Video: https://youtu.be/1n-uMvw5m5c
 
 ## Inspiration
 Ask for the price of a new car online and you get calls instead. Quote sites resell the same request as a lead to several dealers, and dealers pay for ads that follow you across every app. They all paid for you before you decided anything, so they all chase you, and many still won't give a final price until you visit.

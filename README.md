@@ -5,7 +5,7 @@
 Built for the PayPal AI Hackathon 2026. Everything runs on the **PayPal sandbox**: no real money moves.
 
 - Live demo: https://reverso-moko.onrender.com (free instance: the first load after a quiet spell can take ~50 s)
-- Demo video: https://youtu.be/SOPSfoLIK7U
+- Demo video: https://youtu.be/1n-uMvw5m5c
 
 ## The problem
 
