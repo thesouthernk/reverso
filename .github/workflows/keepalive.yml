@@ -1,0 +1,10 @@
+# Render's free instance sleeps after 15 idle minutes; keep it warm for judges.
+name: keepalive
+on:
+  schedule: [{ cron: "*/10 * * * *" }]
+  workflow_dispatch:
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - run: curl -fsS -o /dev/null -m 90 https://reverso-moko.onrender.com/api/state
