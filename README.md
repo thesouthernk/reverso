@@ -7,7 +7,7 @@
 Built for the PayPal AI Hackathon 2026. Everything runs on the **PayPal sandbox**: no real money moves.
 
 - Live demo: https://reverso-moko.onrender.com (free instance: the first load after a quiet spell can take ~50 s)
-- Demo video: https://youtu.be/1n-uMvw5m5c
+- Demo video: https://youtu.be/_y_H04nVuEg
 
 ## The problem
 
@@ -86,11 +86,13 @@ Every PayPal window in the demo is the **PayPal sandbox**. Log in with this sand
 - Email: `sb-vrmzg53149912@personal.example.com`
 - Password: `3NAdZT?e`
 
-1. Open https://reverso-moko.onrender.com/dealer and press the PayPal button to add $500 to Bayside Motors' balance. (State lives in memory, so after the free instance sleeps the balance starts at $0 again.)
-2. Open https://reverso-moko.onrender.com/, press the first suggestion and answer the questions.
+1. Open https://reverso-moko.onrender.com/dealer and press the PayPal button to add $500 to Bayside Motors' balance. (State lives in memory, so after a restart the balance starts at $0 again.)
+2. Open https://reverso-moko.onrender.com/, press the first suggestion and answer the questions (choose "I need it on the lot now" to see the in-stock dealers compete).
 3. Enter any name, email and phone, then the demo code shown on screen. The dealer agents bid; the auction takes about 30 seconds.
-4. Pick an offer, reserve it with PayPal, then press "Yes, I bought it" to receive the $50 gas card by PayPal Payouts.
-5. Back in the dealer view, see the fees charged step by step. On a new contact, "Buyer didn't answer in 48 h: refund" refunds the fee through PayPal.
+4. Optional, before picking: open the dealer view in another tab and change "Your floor" on the live request. The agent re-bids in a few seconds and the buyer's list re-ranks.
+5. Either pick an offer yourself and reserve with PayPal, or press **Let my agent close it**: the closing agent negotiates (watch the counteroffers), accepts within your ceiling and opens the deposit order through the Agent Toolkit. Approve it in PayPal.
+6. Press "Yes, I bought it" to receive the $50 gas card by PayPal Payouts.
+7. In the dealer view, see the fees in the grid, the pipeline and the charts. To test the finance agent, let a second buyer pick Bayside and leave them unanswered, then type "<their name> never answered. Refund the contact fee." It refunds through the Agent Toolkit; the "Buyer didn't answer in 48 h: refund" button does the same through the REST API.
 
 ## Notes
 
