@@ -52,7 +52,7 @@ export default function Dealer() {
     };
     if (window.paypal) { mount(); return; }
     const s = document.createElement("script");
-    s.src = `https://www.paypal.com/sdk/js?client-id=${encodeURIComponent(clientId)}&currency=USD&intent=capture&components=buttons`;
+    s.src = `https://www.paypal.com/sdk/js?client-id=${encodeURIComponent(clientId)}&currency=USD&intent=capture&components=buttons&locale=en_US`;
     s.onload = mount; document.body.appendChild(s);
   }, [clientId, tick]);
 

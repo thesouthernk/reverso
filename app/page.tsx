@@ -37,7 +37,7 @@ function usePayPal(clientId: string | null, intent: "authorize" | "capture") {
     if (!clientId) return;
     if (window.paypal) { setReady(true); return; }
     const s = document.createElement("script");
-    s.src = `https://www.paypal.com/sdk/js?client-id=${encodeURIComponent(clientId)}&currency=USD&intent=${intent}&components=buttons`;
+    s.src = `https://www.paypal.com/sdk/js?client-id=${encodeURIComponent(clientId)}&currency=USD&intent=${intent}&components=buttons&locale=en_US`;
     s.onload = () => setReady(true);
     document.body.appendChild(s);
   }, [clientId, intent]);
