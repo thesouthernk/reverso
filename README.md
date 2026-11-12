@@ -7,7 +7,7 @@
 Built for the PayPal AI Hackathon 2026. Everything runs on the **PayPal sandbox**: no real money moves.
 
 - Live demo: https://reverso-moko.onrender.com (free instance: the first load after a quiet spell can take ~50 s)
-- Demo video: https://youtu.be/_y_H04nVuEg
+- Demo video: https://youtu.be/2WiGT3Y-mYo
 - **Judges: press _Judge mode_ on the home page.** One click gives you a verified buyer and a dealer with demo credit, runs the sealed auction and the closing agent, and stops at the sandbox PayPal approval (login below).
 
 ## The problem

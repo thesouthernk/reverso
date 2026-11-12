@@ -53,3 +53,4 @@ marketing/video2/compositions/*.bak
 marketing/final/vo/
 marketing/final/*.mov
 eval/results.json
+marketing/redteam-card/.hyperframes/

@@ -4,7 +4,7 @@
 
 - Live demo: https://reverso-moko.onrender.com (free instance: first load can take ~50 s)
 - Code: https://github.com/thesouthernk/reverso (MIT)
-- Video: https://youtu.be/_y_H04nVuEg
+- Video: https://youtu.be/2WiGT3Y-mYo
 - **Judges: press _Judge mode_ on the home page.** One click: verified buyer, funded dealer, sealed auction, closing agent, and a sandbox PayPal deposit waiting for your approval.
 
 ## Inspiration
