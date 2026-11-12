@@ -21,7 +21,7 @@ Ask for the price of a new car online and you get calls instead of a price. Quot
 3. The request goes to every dealer with **no name and no number**.
 4. Each dealer's **Claude pricing agent** sends a sealed out-the-door offer within the floor its dealer set, then may improve it once after learning its position.
 5. The buyer's **Claude agent reads every quote's fine print** (mandatory add-ons, doc fees, financing-only prices) and ranks offers by what this buyer would really pay.
-6. The buyer picks one. Only that dealer receives their contact.
+6. The buyer picks one, or **hands the deal to their closing agent**: a ceiling ("up to $37,400") and whether to set up the deposit. The agent negotiates with the dealers' agents (the counteroffers appear live in the chat), accepts the best real cost within the mandate, and **opens the $500 deposit order through PayPal's Agent Toolkit**. The buyer approves it in PayPal; the agent can't move money on its own. Either way, only the chosen dealer receives the buyer's contact.
 7. The buyer can **reserve the car with a $500 PayPal authorization** (refundable until they sign) or book a visit.
 8. When they confirm the purchase, Reverso sends them a **$50 gas card through PayPal Payouts**, which is also how the sale gets confirmed.
 
@@ -30,7 +30,8 @@ Ask for the price of a new car online and you get calls instead of a price. Quot
 - Steers its AI agent from an **AG Grid** board. Every live request shows the agent's bid, the buyer's real cost, the position and the gap to the next offer ("Ahead by $49" or "Lead under $37,299"). Edit the floor on a live request and the agent re-bids on the spot: the grid shows "Re-bidding", then the new bid and position flash in, and the buyer's offer list re-ranks. Hover a bid to read the agent's reasoning, or the real cost to read the buyer's agent's note.
 - Sets default floors per model and trim in a second editable AG Grid.
 - Pays $40 for a contact, $75 total if the buyer books a visit, $150 total if they reserve. No ad spend, no cold leads.
-- If a buyer never answers, the contact fee is **refunded through the PayPal Refunds API**.
+- If a buyer never answers, the contact fee is **refunded through PayPal**: with one button, or by asking its **finance agent** ("Jordan never answered, refund the contact fee"), which checks the account and refunds through the **Agent Toolkit**.
+- Sees two **AG Charts**: its position on each live request (floor, its real cost, best rival), and where its money went (fees by outcome and what PayPal sent back).
 
 ## PayPal integration
 
@@ -40,15 +41,29 @@ Ask for the price of a new car online and you get calls instead of a price. Quot
 | Buyer reserves the car | Orders v2 (`AUTHORIZE`), $500 hold | `app/api/paypal/authorize` |
 | Fee refund when a buyer never answers | Payments v2 Captures `refund` | `lib/store.ts` → `refundNoAnswer` |
 | Gas card for confirming the purchase | Payouts v1 | `app/api/state` (`confirm`) |
+| Closing agent opens the deposit order | **Agent Toolkit** `create_order`, then `pay_order` after the buyer approves | `lib/deal-agent.ts` |
+| Finance agent refunds an unanswered contact | **Agent Toolkit** `create_refund`, `get_refund`, `list_transactions` | `lib/finance-agent.ts` |
 
 Amounts are always decided on the server, never by the browser.
 
+### Agents that move money, behind a gate
+
+`lib/agents.ts` runs Claude with tool use over two kinds of tools: Reverso's own (read the offers, counter, accept, read the account) and PayPal's **Agent Toolkit** (`@paypal/agent-toolkit`). Every Toolkit call goes through a **payment gate in code** before it reaches PayPal:
+- the closing agent may create exactly one order, for exactly $500, only after it accepted an offer within the buyer's ceiling, and only if the buyer asked for a deposit. It never captures: the buyer approves in PayPal first.
+- the finance agent may refund only what `plan_contact_refund` approved: the right capture, exactly $40, for a contact still marked unanswered.
+
+A refused call comes back to the agent as an error and shows in the chat as "Payment gate". The model proposes; the code decides what money can move.
+
 ## AI
 
-Three Claude agents (`lib/ai.ts`), all using structured outputs:
+Five Claude agents. Three use structured outputs (`lib/ai.ts`):
 - **Buyer intake**: maps free text to a catalog model and pre-fills what the buyer already said.
 - **Dealer pricing agents**: one per dealership, each with its own house style, stock and floor. They bid in two rounds.
 - **Fine-print reviewer**: computes each offer's real cost for this buyer and explains the catch.
+
+Two use tool calling with the PayPal Agent Toolkit (`lib/deal-agent.ts`, `lib/finance-agent.ts`):
+- **Closing agent** (buyer side): negotiates with up to three counteroffers, accepts within the mandate, opens the deposit order.
+- **Finance agent** (dealer side): answers questions about spend and refunds unanswered contacts.
 
 The public demo caps model use per visitor and per day (`lib/limit.ts`).
 

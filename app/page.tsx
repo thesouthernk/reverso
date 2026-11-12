@@ -3,13 +3,29 @@
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-type Offer = { id: string; dealer: string | null; distance: string | null; price: number; realCost: number; perks: string; note: string; applies: boolean; improved: boolean };
+type Offer = { id: string; label: string; dealer: string | null; distance: string | null; price: number; realCost: number; perks: string; note: string; applies: boolean; improved: boolean };
 type Profile = { city: string; travel: string; wait: string; budget: string; payment: string; when: string };
 type Req = {
   id: string; model: string; trim: string; profile: Profile; status: "bidding" | "reviewing" | "open" | "chosen" | "failed"; error: string | null; summary: string;
   chosen: string | null; holdUntil: number | null; visit: string | null; reserved: boolean; purchased: boolean; deposit: number; gasCard: number;
-  buyer: { name: string; email: string }; offers: Offer[];
+  buyer: { name: string; email: string }; offers: Offer[]; depositPaid: boolean;
+  agent: { max: number; reserve: boolean; status: "negotiating" | "awaiting-approval" | "done" | "failed"; events: { at: number; from: string; text: string }[]; order: string | null } | null;
 };
+const WHO: Record<string, string> = { agent: "Your agent", dealer: "Dealer's agent", paypal: "PayPal", gate: "Payment gate" };
+
+/** Hand the deal to the buyer's agent: a ceiling, and whether to set up the deposit. */
+function Mandate({ best, onGo }: { best: number; onGo: (max: number, reserve: boolean) => void }) {
+  const picks = [150, 250, 400].map((d) => Math.floor((best - d) / 50) * 50);
+  const [max, setMax] = useState(picks[1]), [reserve, setReserve] = useState(true);
+  return (
+    <div className="mandate">
+      <div className="reply">{picks.map((p) => <button type="button" key={p} className={max === p ? "on" : ""} onClick={() => setMax(p)}>Up to {usd(p)}</button>)}</div>
+      <label className="check"><input type="checkbox" checked={reserve} onChange={(e) => setReserve(e.target.checked)} /> Then set up the {usd(500)} refundable deposit for me to approve in PayPal</label>
+      <p className="fine">The dealer your agent picks gets your contact. The others never learn who you are. It can&apos;t pay anything without your approval.</p>
+      <button className="go" onClick={() => onGo(max, reserve)}>Let my agent close it</button>
+    </div>
+  );
+}
 type Buyer = { name: string; email: string; phone: string; verified: boolean };
 type Parsed = { model: string; trim: string; reply: string; answered: Partial<Record<keyof Profile, string | null>> };
 
@@ -118,7 +134,8 @@ export default function BuyerPage() {
   const [confirming, setConfirming] = useState<string | null>(null);
   const [booking, setBooking] = useState(false);
   const end = useRef<HTMLDivElement>(null);
-  const ppReady = usePayPal(req?.chosen ? me?.clientId ?? null : null, "authorize");
+  const ppReady = usePayPal(req?.chosen ? me?.clientId ?? null : null, req?.agent?.reserve ? "capture" : "authorize");
+  const reqRef = useRef<Req | null>(null); reqRef.current = req;
 
   // Who is this buyer? (Verified earlier in this browser session, or not yet.)
   useEffect(() => { fetch("/api/state?as=me").then((r) => r.json()).then(setMe); }, []);
@@ -151,7 +168,7 @@ export default function BuyerPage() {
   }, [reqId, refresh]);
 
   const count = req?.offers.length ?? 0;
-  useEffect(() => { end.current?.scrollIntoView({ behavior: "smooth", block: "end" }); }, [sent, parsed, Object.keys(answers).length, count, req?.status, req?.chosen, req?.reserved, req?.visit, req?.purchased, confirming, booking, verified, err]);
+  useEffect(() => { end.current?.scrollIntoView({ behavior: "smooth", block: "end" }); }, [sent, parsed, Object.keys(answers).length, count, req?.status, req?.chosen, req?.reserved, req?.visit, req?.purchased, confirming, booking, verified, err, req?.agent?.events.length, req?.agent?.status]);
 
   async function send(text: string) {
     if (!text.trim() || sent) return;
@@ -184,6 +201,15 @@ export default function BuyerPage() {
     const r = await fetch("/api/paypal/authorize", { method: "POST", body: JSON.stringify({ orderId, reqId }) });
     const j = await r.json(); if (!r.ok) setErr(j.error); await refresh();
   }, [reqId, refresh]);
+  const agentOrder = useCallback(async () => { const id = reqRef.current?.agent?.order; if (!id) throw new Error("Your agent hasn't set up the deposit yet"); return id; }, []);
+  const approveAgentOrder = useCallback(async () => {
+    const r = await fetch("/api/agent", { method: "POST", body: JSON.stringify({ action: "pay", id: reqId }) });
+    const j = await r.json(); if (!r.ok) setErr(j.error); await refresh();
+  }, [reqId, refresh]);
+  async function sendAgent(max: number, reserve: boolean) {
+    setErr(""); const r = await fetch("/api/agent", { method: "POST", body: JSON.stringify({ action: "negotiate", id: reqId, max, reserve }) });
+    const j = await r.json(); if (!r.ok) setErr(j.error); await refresh();
+  }
   async function confirmBuy() { setBusy("Sending your gas card through PayPal"); await act({ action: "confirm" }); setBusy(""); }
 
   const chosen = req?.offers.find((o) => o.id === req.chosen);
@@ -268,7 +294,7 @@ export default function BuyerPage() {
                     <div className="who">
                       <span className="seal">
                         {!open && <svg className="lock" viewBox="0 0 16 16" aria-hidden><path d="M4 7V5a4 4 0 0 1 8 0v2h1v7H3V7h1zm2 0h4V5a2 2 0 0 0-4 0v2z" /></svg>}
-                        <span className="name">{o.dealer ?? "Dealer hidden"}</span>
+                        <span className="name">{o.dealer ?? `${o.label}, dealer hidden`}</span>
                       </span>
                       {i === 0 && settled && <span className="badge">Best real cost</span>}
                       {o.improved && !done && <span className="badge soft">Improved its offer</span>}
@@ -277,7 +303,7 @@ export default function BuyerPage() {
                     <p className="perks">{o.perks}</p>
                     {o.note && <p className="note">{o.note}</p>}
                     {passed && <p className="never">Never learned who you are.</p>}
-                    {!done && settled && (confirming === o.id ? (
+                    {!done && settled && !req.agent && (confirming === o.id ? (
                       <div className="confirm">
                         <p>To see who made this offer, we&apos;ll share your contact details with this dealership. Only this one.</p>
                         <button className="go" onClick={async () => { await act({ action: "choose", offer: o.id }); setConfirming(null); }}>Share my details</button>
@@ -291,6 +317,26 @@ export default function BuyerPage() {
           )}
 
           {req?.status === "open" && req.summary && <Words text={req.summary} />}
+
+          {req?.status === "open" && !req.chosen && !req.agent && count > 0 && (
+            <div className="qa">
+              <Words text="Or let me close it. Give me your ceiling: I'll push the dealers' agents for a better number, take the best real cost under it, and set up the reservation for you to approve." />
+              <Mandate best={Math.min(...req.offers.map((o) => o.realCost))} onGo={sendAgent} />
+            </div>
+          )}
+          {req?.agent && (
+            <section className="agentlog" aria-live="polite">
+              <p className="agentlog-h">Your agent, closing the deal at {usd(req.agent.max)} or less</p>
+              <ol>{req.agent.events.map((e) => <li key={e.at + e.text} className={e.from}><b>{WHO[e.from] ?? e.from}</b><span>{e.text}</span></li>)}</ol>
+              {req.agent.status === "negotiating" && <p className="working" role="status"><span className="orb" aria-hidden /><span className="shimmer">Your agent is negotiating with the dealers&apos; agents</span></p>}
+            </section>
+          )}
+          {req?.agent?.status === "awaiting-approval" && req.agent.order && !req.reserved && (
+            <div className="qa">
+              <Words text={`Your agent set up the ${usd(req.deposit)} refundable deposit through PayPal. Approve it and the car is yours to sign for.`} />
+              <div className="reply stack"><PayPalButton ready={ppReady} createOrder={agentOrder} onApprove={approveAgentOrder} onError={setErr} /></div>
+            </div>
+          )}
           {req?.status === "failed" && <p className="error" role="alert">The auction failed: {req.error}</p>}
 
           {chosen && <Words text={`It's ${chosen.dealer}, ${chosen.distance} away. They have your contact now and this price is on record at ${usd(chosen.realCost)}. The other ${count - 1} dealers never learned who you are.`} />}
@@ -306,12 +352,12 @@ export default function BuyerPage() {
                 <div><dt>Price</dt><dd>{usd(chosen.realCost)} out the door</dd></div>
                 <div><dt>Terms</dt><dd>{chosen.perks}</dd></div>
               </dl>
-              {req.reserved ? <p className="verified">Reserved for you <span>{usd(req.deposit)} authorized with PayPal, refundable until you sign</span></p>
+              {req.reserved ? <p className="verified">Reserved for you <span>{usd(req.deposit)} {req.depositPaid ? "paid" : "authorized"} with PayPal, refundable until you sign</span></p>
                 : req.holdUntil && <Hold until={req.holdUntil} />}
             </section>
           )}
 
-          {chosen && req && !req.reserved && (
+          {chosen && req && !req.reserved && !req.agent?.reserve && (
             <div className="qa">
               <Words text={req.visit ? `Your visit is booked for ${req.visit}. You can still reserve it now so nobody else buys it first.` : `Want to lock it in? Reserve it with a ${usd(req.deposit)} PayPal deposit, refundable until you sign, or book a visit to see it first.`} />
               <div className="reply stack">

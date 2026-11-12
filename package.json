@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.8.0",
+    "@paypal/agent-toolkit": "^1.11.0",
     "ag-charts-community": "^14.3.0",
     "ag-charts-react": "^14.3.0",
     "ag-grid-community": "^36.3.0",

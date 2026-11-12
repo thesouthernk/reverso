@@ -48,7 +48,7 @@ function Charts({ rows, spend }: { rows: Row[]; spend: Spend }) {
   const donut: AgPolarChartOptions = {
     data: parts, background: { visible: false }, title: { text: "Where your money went", ...FONT, fontSize: 15, fontWeight: 600, textAlign: "left" },
     subtitle: { text: "Fees by outcome, and what PayPal sent back", ...FONT, fontSize: 12, color: "#6B7280", textAlign: "left" },
-    series: [{ type: "donut", angleKey: "amount", legendItemKey: "kind", fills: parts.map((p) => p.fill), strokeWidth: 2, innerRadiusRatio: 0.68,
+    series: [{ type: "donut", angleKey: "amount", legendItemKey: "kind", fills: parts.map((p) => p.fill), strokes: parts.map(() => "#FFFFFF"), strokeWidth: 2, innerRadiusRatio: 0.68,
       innerLabels: [{ text: usd(net), ...FONT, fontSize: 22, fontWeight: 650 }, { text: "net spent", ...FONT, fontSize: 12, color: "#6B7280" }],
       tooltip: { renderer: ({ datum }) => `${datum.kind}: ${usd(datum.amount)}` } }],
     legend: { position: "bottom", item: { label: FONT } },
@@ -72,6 +72,43 @@ const theme = themeQuartz.withParams({
 });
 
 declare global { interface Window { paypal?: { Buttons: (o: object) => { render: (el: HTMLElement) => Promise<void> } } } }
+
+const ASK = ["A buyer never answered. Refund the contact fee.", "What did I spend on Reverso, and what came back?", "Check my last PayPal refund."];
+const WHO: Record<string, string> = { agent: "Finance agent", paypal: "PayPal", gate: "Payment gate" };
+
+/** The dealer's finance agent: Claude with PayPal's Agent Toolkit, behind a refund gate. */
+function Finance({ onDone }: { onDone: () => void }) {
+  const [q, setQ] = useState(""), [busy, setBusy] = useState(false), [err, setErr] = useState("");
+  const [turns, setTurns] = useState<{ q: string; answer: string; events: { at: number; from: string; text: string }[] }[]>([]);
+  async function ask(text: string) {
+    if (!text.trim() || busy) return;
+    setBusy(true); setErr(""); setQ("");
+    const r = await fetch("/api/agent", { method: "POST", body: JSON.stringify({ action: "finance", question: text }) });
+    const j = await r.json(); setBusy(false);
+    if (!r.ok) setErr(j.error); else setTurns((t) => [...t, { q: text, answer: j.answer, events: j.events.filter((e: { from: string }) => e.from !== "agent") }]);
+    onDone();
+  }
+  return (
+    <section className="pipeline finance" aria-label="Finance agent">
+      <h2>Your finance agent</h2>
+      <p className="lede small">Claude with PayPal&apos;s Agent Toolkit. It reads your account and refunds contacts that never answered; a payment gate lets through only refunds the rules allow.</p>
+      <div className="agentlog">
+        {turns.length === 0 && !busy && <p className="empty">Ask about your spend, or tell it a buyer never answered.</p>}
+        <ol>{turns.flatMap((t, i) => [
+          <li key={`q${i}`} className="me"><b>You</b><span>{t.q}</span></li>,
+          ...t.events.map((e) => <li key={`e${i}${e.at}${e.text}`} className={e.from}><b>{WHO[e.from] ?? e.from}</b><span>{e.text}</span></li>),
+          <li key={`a${i}`} className="agent"><b>Finance agent</b><span>{t.answer}</span></li>,
+        ])}</ol>
+        {busy && <p className="working" role="status"><span className="orb" aria-hidden /><span className="shimmer">Checking your account and PayPal</span></p>}
+        {err && <p className="error" role="alert">{err}</p>}
+        <form className="reply" onSubmit={(e) => { e.preventDefault(); ask(q); }}>
+          {ASK.map((a) => <button type="button" key={a} disabled={busy} onClick={() => ask(a)}>{a}</button>)}
+          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Or ask in your own words" aria-label="Ask your finance agent" disabled={busy} />
+        </form>
+      </div>
+    </section>
+  );
+}
 
 export default function Dealer() {
   const [view, setView] = useState<View | null>(null);
@@ -204,6 +241,8 @@ export default function Dealer() {
           })}
         </div>
       </section>
+
+      <Finance onDone={tick} />
 
       <section className="pipeline">
         <h2>Your inventory and floors</h2>

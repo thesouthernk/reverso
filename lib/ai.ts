@@ -56,13 +56,14 @@ const Bid = z.object({
 });
 export type DealerBid = z.infer<typeof Bid>;
 
-export function dealerBid(d: DealerPolicy, req: { model: string; trim: string; msrp: number; payment: string; when: string; budget: string }, round: { n: number; myLast?: number; position?: string; best?: number }) {
+export function dealerBid(d: DealerPolicy, req: { model: string; trim: string; msrp: number; payment: string; when: string; budget: string }, round: { n: number; myLast?: number; position?: string; best?: number; message?: string }) {
   return ask(Bid,
     `You are the pricing agent of ${d.name}, a new-car dealership ${d.distance} from the buyer. You compete in a sealed, anonymous auction: the buyer is verified and only the dealer they pick gets their contact. ` +
     `Your house style: ${d.style} Stock: ${d.stock} Never quote an out-the-door price below your floor of $${d.floor}. Texas sales tax is 6.25% and your doc fee is $165; out-the-door means tax and fees included.`,
     `Request: new ${req.model} ${req.trim} (MSRP $${req.msrp}). Buyer pays: ${req.payment}. Buying: ${req.when}. Budget: ${req.budget}.\n` +
     (round.n === 1 ? "Make your opening sealed offer." :
-      `Round 2. Your last offer was $${round.myLast}. Ranked by the buyer's real cost you are ${round.position}; the best real cost so far is $${round.best}. Improve your offer if it makes business sense, staying at or above your floor, or hold it.`));
+      `Round 2. Your last offer was $${round.myLast}. Ranked by the buyer's real cost you are ${round.position}; the best real cost so far is $${round.best}. Improve your offer if it makes business sense, staying at or above your floor, or hold it.` +
+      (round.message ? ` The buyer's agent writes to you: "${round.message}" Answer it in perks, in one sentence.` : "")));
 }
 
 // ---------- the buyer's agent reads the fine print ----------

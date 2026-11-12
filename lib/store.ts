@@ -12,7 +12,8 @@ export type Req = {
   status: "bidding" | "reviewing" | "open" | "chosen" | "failed"; error?: string;
   myFloor?: number; rebidding?: boolean; // Bayside's floor for this request, editable live from the dealer grid
   offers: Offer[]; summary: string; chosen?: string; holdUntil?: number;
-  visit?: string; reservation?: { authorizationId: string; amount: number; voided?: boolean };
+  visit?: string; reservation?: { authorizationId: string; amount: number; voided?: boolean; paid?: boolean };
+  agent?: { max: number; reserve: boolean; status: "negotiating" | "awaiting-approval" | "done" | "failed"; events: { at: number; from: string; text: string }[]; order?: string; counters: number };
   purchase?: { payoutBatch: string; amount: number };
 };
 export type Deal = { reqId: string; name: string; email: string; phone: string; car: string; price: number; stage: Stage; paid: number; refunded: number; visit?: string };
@@ -29,9 +30,9 @@ const DEALERS: Omit<DealerPolicy, "floor">[] = [
   { id: "summit", name: "Summit Motors", distance: "11 miles", stock: "In stock.",
     style: "Your dealership's pricing system works like this, and you must follow it exactly: headline_price is the out-the-door price BEFORE the Protection Package and assumes the buyer finances with you. The Protection Package ($1,995: nitrogen-filled tires, door edge guards) is pre-installed and added at signing. Buyers who do not finance with you pay $1,000 more. Your perks line only advertises the price and stock; the package and the financing condition appear in fine_print, which you write accurately." },
   { id: ME, name: "Bayside Motors", distance: "8 miles", stock: "On the lot today, Lunar Gray.",
-    style: "Transparent pricing: no add-ons and no conditions; the headline is exactly what the buyer pays. This is a verified buyer ready to buy, which is worth more to you than margin: open within $300 of your floor." },
+    style: "Transparent pricing: no add-ons and no conditions; the headline is exactly what the buyer pays. Open about $700 above your floor. This is a verified buyer ready to buy, which is worth more to you than margin: when a buyer's agent pushes or you are behind, come down in real steps, never below your floor." },
   { id: "lakeshore", name: "Lakeshore Motors", distance: "14 miles", stock: "Not in stock: factory order, arrives in 4 weeks.",
-    style: "Volume dealer: you win on price. Bid close to your floor. Be honest that the car arrives in 4 weeks." },
+    style: "Volume dealer: you win on price. Open about $500 above your floor and move down fast when pushed or behind. Be honest that the car arrives in 4 weeks." },
   { id: "northgate", name: "Northgate Motors", distance: "19 miles", stock: "In stock.",
     style: "Premium dealer: every car carries a $1,500 market adjustment, included in your out-the-door price. You include all-weather mats and 2 years of maintenance and you rarely discount." },
 ];
@@ -70,16 +71,25 @@ function charge(reqId: string, total: number, why: string, kind: "contact" | "vi
   const extra = Math.max(0, total - d.paid); if (!extra) return;
   s.balance -= extra; d.paid += extra; spend(s)[kind] += extra; log(`${why} ${usd(extra)} charged from your PayPal-funded balance.`);
 }
-/** No answer within 48 hours: the contact fee goes back through PayPal. */
-export async function refundNoAnswer(reqId: string) {
+/** Which PayPal top-up capture an unanswered contact's fee can go back against. Throws when it isn't refundable. */
+export function refundPlan(reqId: string) {
   const s = store(), d = s.deals.find((x) => x.reqId === reqId);
   if (!d || d.stage !== 0 || d.refunded) throw new Error("Only an unanswered new contact can be refunded");
   const amount = Math.min(d.paid, FEES.contact);
   const src = s.topups.find((t) => t.amount - t.refunded >= amount);
   if (!src) throw new Error("No PayPal top-up left to refund against");
-  const r = await refundCapture(src.captureId, amount, `Reverso: buyer ${reqId} did not answer within 48 hours`, `refund-${reqId}`);
+  return { captureId: src.captureId, amount };
+}
+export function applyRefund(reqId: string, captureId: string, amount: number, refundId: string, by = "") {
+  const s = store(), d = s.deals.find((x) => x.reqId === reqId)!, src = s.topups.find((t) => t.captureId === captureId)!;
   src.refunded += amount; d.refunded = amount; d.stage = 4; spend(s).refunded += amount; // the fee returns to the dealer's PayPal account, not to the balance
-  log(`Buyer ${reqId} never answered. ${usd(amount)} refunded to you through PayPal (refund ${r.id}).`);
+  log(`Buyer ${reqId} never answered. ${usd(amount)} refunded to you through PayPal${by} (refund ${refundId}).`);
+}
+/** No answer within 48 hours: the contact fee goes back through PayPal. */
+export async function refundNoAnswer(reqId: string) {
+  const { captureId, amount } = refundPlan(reqId);
+  const r = await refundCapture(captureId, amount, `Reverso: buyer ${reqId} did not answer within 48 hours`, `refund-${reqId}`);
+  applyRefund(reqId, captureId, amount, r.id);
   return r;
 }
 
@@ -94,6 +104,12 @@ export function createRequest(model: string, trim: string, profile: Profile, buy
   void runAuction(r).catch((e) => { r.status = "failed"; r.error = String(e.message ?? e); log(`Request ${r.id}: the auction failed (${r.error}).`); });
   return r;
 }
+
+export const policyFor = (r: Req, dealerId: string) => {
+  const d = DEALERS.find((x) => x.id === dealerId)!;
+  return { ...d, floor: d.id === ME ? r.myFloor ?? store().floors[`${r.model}|${r.trim}`] : Math.round(otd(r.msrp) * FLOOR_PCT[d.id]) };
+};
+export const note = (text: string) => log(text);
 
 function policies(r: Req): DealerPolicy[] {
   const s = store(), base = otd(r.msrp);
@@ -179,9 +195,9 @@ export function bookVisit(reqId: string, slot: string) {
   r.visit = slot;
   const d = s.deals.find((x) => x.reqId === reqId); if (d && mineChosen(r)) { d.visit = slot; d.stage = Math.max(d.stage, 1) as Stage; charge(reqId, FEES.visit, `Visit booked for ${slot};`, "visit"); }
 }
-export function reserve(reqId: string, authorizationId: string, amount: number) {
+export function reserve(reqId: string, authorizationId: string, amount: number, paid = false) {
   const s = store(), r = s.reqs.find((x) => x.id === reqId); if (!r?.chosen || r.reservation) throw new Error("Can't reserve now");
-  r.reservation = { authorizationId, amount };
+  r.reservation = { authorizationId, amount, paid };
   const d = s.deals.find((x) => x.reqId === reqId); if (d && mineChosen(r)) { d.stage = Math.max(d.stage, 2) as Stage; charge(reqId, FEES.reserve, `The buyer of ${reqId} reserved with a ${usd(amount)} PayPal deposit;`, "reserve"); }
 }
 export function confirmPurchase(reqId: string, payoutBatch: string) {
@@ -196,9 +212,10 @@ export function buyerView(id: string) {
   return {
     id: r.id, model: r.model, trim: r.trim, profile: r.profile, status: r.status, error: r.error ?? null, summary: r.summary,
     chosen: r.chosen ?? null, holdUntil: r.holdUntil ?? null, visit: r.visit ?? null, reserved: !!r.reservation && !r.reservation.voided,
-    purchased: !!r.purchase, deposit: DEPOSIT, gasCard: GAS_CARD, buyer: { name: r.buyer.name, email: r.buyer.email },
+    purchased: !!r.purchase, deposit: DEPOSIT, gasCard: GAS_CARD, buyer: { name: r.buyer.name, email: r.buyer.email }, depositPaid: !!r.reservation?.paid,
+    agent: r.agent ? { max: r.agent.max, reserve: r.agent.reserve, status: r.agent.status, events: r.agent.events, order: r.agent.order ?? null } : null,
     offers: [...r.offers].sort((a, b) => a.realCost - b.realCost).map((o) => ({
-      id: o.id, dealer: r.chosen === o.id ? o.dealer : null, price: o.price, realCost: o.realCost, perks: o.perks, note: o.note, applies: o.applies, improved: o.improved,
+      id: o.id, label: `Offer ${"ABCD"[r.offers.indexOf(o)]}`, dealer: r.chosen === o.id ? o.dealer : null, price: o.price, realCost: o.realCost, perks: o.perks, note: o.note, applies: o.applies, improved: o.improved,
       distance: r.chosen === o.id ? DEALERS.find((d) => d.id === o.dealerId)?.distance : null,
     })),
   };

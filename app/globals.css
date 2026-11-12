@@ -242,3 +242,23 @@ ol, ul { list-style: none; }
 @media (max-width: 600px) { .verify { margin-left: 0; } .verify form { grid-template-columns: 1fr; } }
 .sheet .photos { grid-template-columns: 3fr 2fr; }
 .sheet .photos figure:first-child { aspect-ratio: 4 / 3; }
+
+/* The buyer's closing agent */
+.mandate { display: grid; gap: 12px; margin-top: 10px; }
+.mandate .reply button.on { border-color: var(--ink); background: var(--ink); color: #fff; }
+.mandate .check { display: flex; gap: 10px; align-items: center; font-size: 15px; }
+.mandate .fine { color: var(--quiet); font-size: 13px; margin: 0; }
+.mandate .go { justify-self: start; }
+.agentlog { border: 1px solid var(--line); border-radius: 20px; padding: 16px 18px; margin: 16px 0; background: var(--bg); box-shadow: var(--lift); }
+.agentlog-h { font-weight: 620; margin: 0 0 10px; }
+.agentlog ol { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; }
+.agentlog li { display: grid; grid-template-columns: 130px 1fr; gap: 12px; font-size: 14px; line-height: 1.45; animation: rise .35s var(--ease) both; }
+.agentlog li b { font-weight: 600; color: var(--quiet); }
+.agentlog li.agent b { color: var(--blue); }
+.agentlog li.dealer b { color: var(--warn); }
+.agentlog li.paypal b { color: #003087; }
+.agentlog li.gate b { color: #B91C1C; }
+@media (max-width: 640px) { .agentlog li { grid-template-columns: 1fr; gap: 2px; } }
+.finance .agentlog { margin: 0; }
+.agentlog li.me b { color: var(--ink); }
+.finance .reply { margin: 14px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
