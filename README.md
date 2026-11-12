@@ -1,5 +1,7 @@
 # Reverso
 
+[![checks](https://github.com/thesouthernk/reverso/actions/workflows/checks.yml/badge.svg)](https://github.com/thesouthernk/reverso/actions/workflows/checks.yml)
+
 **The car market, the right way round.** Get every dealer's real out-the-door price on a new car, without giving anyone your phone number. Dealers compete for you in a sealed auction run by AI agents, and only the dealer you pick learns who you are. Dealers pay only for outcomes, through PayPal.
 
 Built for the PayPal AI Hackathon 2026. Everything runs on the **PayPal sandbox**: no real money moves.
@@ -57,6 +59,8 @@ cp .env.example .env.local   # fill in the three values
 npm install
 npm run dev -- -p 3210
 ```
+
+`npm test` runs the marketplace rules (floors, who bids, pay-per-outcome charges, the PayPal refund, live re-bids) with Claude and PayPal replaced by fakes, so it needs no keys and costs nothing. CI runs it with the type check on every push.
 
 Open `http://localhost:3210/dealer`, add $500 with PayPal using a sandbox personal account, then open `http://localhost:3210/` and ask for a car (try a Terra Hybrid Touring).
 
