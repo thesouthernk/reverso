@@ -35,7 +35,7 @@ export async function askFinance(question: string) {
       check: (i) => {
         const p = planned.get(i.capture_id);
         if (!p) return "call plan_contact_refund first; only planned contact refunds are allowed";
-        if (Number(i.amount?.value) !== p.amount) return `the refund is exactly $${p.amount}`;
+        if (i.amount?.currency_code !== "USD" || Number(i.amount?.value) !== p.amount) return `the refund is exactly $${p.amount} USD`;
         return null;
       },
       after: (i, res) => {

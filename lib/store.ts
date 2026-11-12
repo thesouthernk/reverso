@@ -62,6 +62,11 @@ export function addTopUp(captureId: string, amount: number) {
   const s = store(); s.topups.push({ captureId, amount, refunded: 0, at: Date.now() }); s.balance += amount;
   log(`Balance topped up with PayPal: ${usd(amount)}.`);
 }
+/** Judge mode: a demo credit so Bayside can bid before anyone tops up. Not a PayPal capture, so no refund can go against it. */
+export function demoCredit(amount = 300) {
+  const s = store(); if (s.balance >= FEES.reserve) return;
+  s.balance += amount; log(`Demo credit of ${usd(amount)} added for judge mode. It is not PayPal money: top up with PayPal to have something to refund against.`);
+}
 export function setFloor(key: string, floor: number) {
   const s = store(); if (!(key in s.floors) || !Number.isFinite(floor) || floor < 1000) return false;
   s.floors[key] = Math.round(floor); log(`Floor for ${key.replace("|", " ")} set to ${usd(floor)}.`); return true;
@@ -175,8 +180,8 @@ export async function rebid(reqId: string, floor: number) {
 async function review(r: Req) {
   r.status = "reviewing";
   const res = await reviewOffers(r.profile.payment, r.offers.map((o) => ({ id: o.id, headline_price: o.price, perks: o.perks, fine_print: o.finePrint })));
-  for (const v of res.offers) { const o = r.offers.find((x) => x.id === v.id); if (o) Object.assign(o, { realCost: Math.round(v.real_cost), applies: v.applies, note: v.note }); }
-  r.summary = res.summary;
+  for (const v of res.offers) { const o = r.offers.find((x) => x.id === v.id); if (o) Object.assign(o, { realCost: Math.max(o.price, Math.round(v.real_cost)), applies: v.applies, note: v.note }); }
+  r.summary = res.summary; // real cost never drops below the headline: no fine print can talk the reviewer into a discount
 }
 
 export function choose(reqId: string, offerId: string) {

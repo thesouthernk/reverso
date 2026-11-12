@@ -1,6 +1,7 @@
 // Agents that move money. Claude drives; PayPal's Agent Toolkit executes; a code gate checks
 // every money call against the buyer's mandate or the dealer's rules before it reaches PayPal.
 import Anthropic from "@anthropic-ai/sdk";
+import { meter } from "./meter";
 import { PayPalAgentToolkit } from "@paypal/agent-toolkit/openai";
 
 const client = new Anthropic();
@@ -40,7 +41,7 @@ export async function runAgent(o: {
   const messages: Anthropic.MessageParam[] = [{ role: "user", content: o.task }];
   for (let turn = 0; turn < (o.maxTurns ?? 10); turn++) {
     const res = await client.messages.create({ model: MODEL, max_tokens: 2000, system: o.system, tools, messages });
-    messages.push({ role: "assistant", content: res.content });
+    meter(res.usage); messages.push({ role: "assistant", content: res.content });
     const said = res.content.filter((b) => b.type === "text").map((b) => (b as Anthropic.TextBlock).text).join(" ").trim();
     const calls = res.content.filter((b): b is Anthropic.ToolUseBlock => b.type === "tool_use");
     if (!calls.length) { if (said) o.emit({ from: "agent", text: said }); return said; }

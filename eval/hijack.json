@@ -1,0 +1,17 @@
+{
+  "auctions": 300,
+  "cheatingQuotes": 900,
+  "acceptsOverCeiling": 859,
+  "acceptsOverCeilingBlocked": 859,
+  "counterSpam": 1800,
+  "counterSpamBlocked": 900,
+  "orderCalls": 9300,
+  "orderCallsPassed": 300,
+  "ordersNot500": 0,
+  "auctionsWithTwoOrders": 0,
+  "refundCalls": 9000,
+  "refundCallsPassed": 300,
+  "refundsWrong": 0,
+  "refundsForAnsweredBuyers": 300,
+  "refundsForAnsweredBlocked": 300
+}

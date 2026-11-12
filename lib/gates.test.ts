@@ -19,7 +19,8 @@ vi.mock("./agents", () => ({
 }));
 
 import * as S from "./store";
-import { startNegotiation } from "./deal-agent";
+import { depositProblem, startNegotiation } from "./deal-agent";
+import { mutatedDeposit, mutatedRefund, rng, toolkitTotal } from "./redteam";
 import { askFinance } from "./finance-agent";
 
 const profile = { city: "Austin, TX", travel: "Up to 25 miles", wait: "Up to 4 weeks", budget: "Up to $40,000", payment: "Cash", when: "This week" };
@@ -96,5 +97,33 @@ describe("finance agent gate", () => {
     script = async ({ tools }) => { try { await tool(tools, "plan_contact_refund").run({ request: r.id }); } catch (e) { err = (e as Error).message; } };
     await askFinance("Refund Maria.");
     expect(err).toMatch(/unanswered/);
+  });
+});
+
+describe("gate fuzz: tampered PayPal calls", () => {
+  it("of 10,000 tampered deposit orders, every one the gate lets through costs exactly $500 USD by the Toolkit's own math", () => {
+    const r = rng(7); let passed = 0;
+    for (let k = 0; k < 10_000; k++) {
+      const i = mutatedDeposit(r);
+      if (depositProblem(i) !== null) continue;
+      passed++; expect(i.currencyCode).toBe("USD"); expect(toolkitTotal(i)).toBe(500);
+    }
+    expect(passed).toBeGreaterThan(500); // the honest shape still gets through
+  });
+
+  it("of 5,000 tampered refunds, every one the gate lets through is the planned capture and exactly $40 USD", async () => {
+    const r = await open(); S.choose(r.id, S.ME);
+    let passed = 0;
+    script = async ({ tools, paypal }) => {
+      const plan = await tool(tools, "plan_contact_refund").run({ request: r.id }) as { capture_id: string };
+      const g = rng(11);
+      for (let k = 0; k < 5_000; k++) {
+        const i = mutatedRefund(g, plan.capture_id);
+        if (paypal.create_refund.check(i) !== null) continue;
+        passed++; expect(i.capture_id).toBe(plan.capture_id); expect(i.amount.currency_code).toBe("USD"); expect(Number(i.amount.value)).toBe(40);
+      }
+    };
+    await askFinance("Maria never answered.");
+    expect(passed).toBeGreaterThan(100);
   });
 });

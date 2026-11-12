@@ -133,6 +133,7 @@ export default function BuyerPage() {
   const [err, setErr] = useState("");
   const [confirming, setConfirming] = useState<string | null>(null);
   const [booking, setBooking] = useState(false);
+  const [judge, setJudge] = useState(false);
   const end = useRef<HTMLDivElement>(null);
   const ppReady = usePayPal(req?.chosen ? me?.clientId ?? null : null, req?.agent?.reserve ? "capture" : "authorize");
   const reqRef = useRef<Req | null>(null); reqRef.current = req;
@@ -210,6 +211,21 @@ export default function BuyerPage() {
     setErr(""); const r = await fetch("/api/agent", { method: "POST", body: JSON.stringify({ action: "negotiate", id: reqId, max, reserve }) });
     const j = await r.json(); if (!r.ok) setErr(j.error); await refresh();
   }
+  // Judge mode: skip typing, the code and the top-up; then hand the deal to the agent as soon as offers are in.
+  async function judgeMode() {
+    setErr(""); setBusy("Setting up a verified buyer and a funded dealer");
+    const r = await fetch("/api/judge", { method: "POST" }); const j = await r.json(); setBusy("");
+    if (!r.ok) { setErr(j.error); return; }
+    published.current = true; setJudge(true);
+    setMe((m) => ({ clientId: m?.clientId ?? "", buyer: j.buyer })); setSent(j.text);
+    setParsed({ model: j.model, trim: j.trim, reply: j.reply, answered: {} }); setAnswers(j.profile); setReqId(j.id);
+  }
+  const judgeSent = useRef(false);
+  useEffect(() => {
+    if (!judge || judgeSent.current || req?.status !== "open" || req.chosen || req.agent || !req.offers.length) return;
+    judgeSent.current = true;
+    sendAgent(Math.floor((Math.min(...req.offers.map((o) => o.realCost)) - 150) / 50) * 50, true);
+  });
   async function confirmBuy() { setBusy("Sending your gas card through PayPal"); await act({ action: "confirm" }); setBusy(""); }
 
   const chosen = req?.offers.find((o) => o.id === req.chosen);
@@ -240,9 +256,12 @@ export default function BuyerPage() {
           </form>
           {err && <p className="error" role="alert">{err}</p>}
           <div className="chips">{SUGGESTIONS.map((s) => <button key={s} onClick={() => setDraft(s)}>{s}</button>)}</div>
+          <button className="judge" onClick={judgeMode} disabled={!!busy}>Judge mode: run the whole flow in one click</button>
+          <p className="fine">Presets a verified buyer and a dealer with demo credit, then your agent negotiates and sets up a sandbox PayPal deposit for you to approve.</p>
         </main>
       ) : (
         <main className="thread">
+          {judge && <p className="fine judge-note">Judge mode. When PayPal opens, log in with the sandbox buyer <b>sb-vrmzg53149912@personal.example.com</b> / <b>3NAdZT?e</b>. Nothing here is real money.</p>}
           <p className="me">{sent}</p>
           {parsed && <Words text={`${parsed.reply} A few quick questions first, so dealers only send offers you can actually use.`} />}
 

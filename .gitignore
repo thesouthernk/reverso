@@ -52,3 +52,4 @@ marketing/video2/compositions/*.bak
 .playwright-mcp/
 marketing/final/vo/
 marketing/final/*.mov
+eval/results.json

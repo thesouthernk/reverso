@@ -262,3 +262,7 @@ ol, ul { list-style: none; }
 .finance .agentlog { margin: 0; }
 .agentlog li.me b { color: var(--ink); }
 .finance .reply { margin: 14px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+.judge { margin-top: 26px; background: var(--ink); color: #fff; border: 0; border-radius: 999px; padding: 12px 22px; font-weight: 550; transition: transform .15s var(--ease), box-shadow .2s; }
+.judge:hover { transform: translateY(-1px); box-shadow: var(--lift); }
+.judge + .fine { max-width: 520px; text-align: center; margin-top: 8px; }
+.judge-note { border: 1px dashed var(--line); border-radius: 14px; padding: 8px 12px; }
