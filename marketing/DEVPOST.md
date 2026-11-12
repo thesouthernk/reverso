@@ -52,4 +52,4 @@ Those zeros hold only if the buyer's fine-print reviewer prices each quote right
 - Agents that negotiate need room to negotiate. Dealer agents now open above their floors and come down in real steps when pushed, so the closing agent has something to win.
 
 ## What's next
-A bigger red-team run against the live model, real SMS verification, per-dealer sign-in for the MCP tools, dealer inventory feeds, persistent storage, used cars and trade-ins.
+Measuring the closing agent at volume and testing the reviewer on real dealer paperwork, real SMS verification, per-dealer sign-in for the MCP tools, dealer inventory feeds, persistent storage, used cars and trade-ins.
