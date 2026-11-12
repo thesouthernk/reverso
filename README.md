@@ -4,7 +4,7 @@
 
 Built for the PayPal AI Hackathon 2026. Everything runs on the **PayPal sandbox**: no real money moves.
 
-- Live demo: `[NEED: Render URL]`
+- Live demo: https://reverso-moko.onrender.com (free instance: the first load after a quiet spell can take ~50 s)
 - Demo video: `[NEED: YouTube URL]`
 
 ## The problem
@@ -60,7 +60,18 @@ npm run dev -- -p 3210
 
 Open `http://localhost:3210/dealer`, add $500 with PayPal using a sandbox personal account, then open `http://localhost:3210/` and ask for a car (try a Terra Hybrid Touring).
 
-Sandbox buyer login for testing: `[NEED: judge sandbox account]`
+### Testing the live demo
+
+Every PayPal window in the demo is the **PayPal sandbox**. Log in with this sandbox test account (fake money, $5,000 balance):
+
+- Email: `sb-vrmzg53149912@personal.example.com`
+- Password: `3NAdZT?e`
+
+1. Open https://reverso-moko.onrender.com/dealer and press the PayPal button to add $500 to Bayside Motors' balance. (State lives in memory, so after the free instance sleeps the balance starts at $0 again.)
+2. Open https://reverso-moko.onrender.com/, press the first suggestion and answer the questions.
+3. Verify with PayPal (a $1 authorization voided at once). The dealer agents bid; the auction takes about 30 seconds.
+4. Pick an offer, reserve it with PayPal, then press "Yes, I bought it" to receive the $50 gas card by PayPal Payouts.
+5. Back in the dealer view, see the fees charged step by step. On a new contact, "Buyer didn't answer in 48 h: refund" refunds the fee through PayPal.
 
 ## Notes
 
